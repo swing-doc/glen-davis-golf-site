@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Testimonials | Glen Davis Golf Schools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#152118; --forest:#1F3A26;
+    --cream:#FAF8F3; --panel:#FFFFFF;
+    --gold:#A9843C; --gold-deep:#8A6B2E;
+    --rule:rgba(21,33,24,0.10); --rule-strong:rgba(21,33,24,0.16);
+    --text:#1B241D; --text-dim:#5A625C;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--cream);color:var(--text);font-family:'Inter',sans-serif;font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased;}
+  h1,h2,h3{font-family:'Fraunces',serif;font-weight:500;letter-spacing:-0.01em;margin:0;color:var(--ink);}
+  p{margin:0 0 1em;color:var(--text-dim);}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 32px;}
+  a{color:inherit;}
+
+  header{position:sticky;top:0;z-index:50;background:rgba(250,248,243,0.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--rule);}
+  .nav{display:flex;align-items:center;justify-content:space-between;padding:22px 32px;max-width:1120px;margin:0 auto;}
+  .brand{font-family:'Fraunces',serif;font-size:19px;font-weight:500;display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--ink);}
+  .nav-links{display:flex;gap:36px;font-size:14px;}
+  .nav-links a{text-decoration:none;color:var(--text-dim);border-bottom:1px solid transparent;padding-bottom:3px;transition:border-color .2s,color .2s;}
+  .nav-links a:hover,.nav-links a.active{border-color:var(--gold);color:var(--ink);}
+  .nav-cta{font-size:14px;background:var(--forest);color:var(--cream);padding:12px 24px;border-radius:2px;text-decoration:none;white-space:nowrap;}
+  .nav-cta:hover{background:var(--ink);}
+  @media(max-width:760px){.nav-links{display:none;}}
+
+  .page-hero{padding:76px 0 60px;border-bottom:1px solid var(--rule);}
+  .eyebrow{font-size:13px;color:var(--gold-deep);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:16px;}
+  .page-hero h1{font-size:clamp(34px,4.4vw,52px);max-width:18ch;}
+  .page-hero p{max-width:50ch;font-size:16.5px;margin-top:14px;}
+
+  section{padding:80px 0 0;}
+  .story-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--rule-strong);border:1px solid var(--rule-strong);}
+  .story-card{background:var(--panel);padding:38px 36px;display:flex;flex-direction:column;gap:20px;}
+  .story-top{display:flex;align-items:center;gap:14px;}
+  .avatar{width:42px;height:42px;border-radius:50%;flex-shrink:0;background:var(--forest);}
+  .story-name{font-size:14px;font-weight:500;color:var(--ink);}
+  .story-tag{font-size:12.5px;color:var(--text-dim);}
+  .story-quote{font-family:'Fraunces',serif;font-style:italic;font-size:18px;line-height:1.5;color:var(--ink);}
+  @media(max-width:760px){.story-grid{grid-template-columns:1fr;}}
+
+  footer{background:var(--cream);border-top:1px solid var(--rule);padding:38px 32px;font-size:13px;color:var(--text-dim);display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;max-width:1120px;margin:0 auto;margin-top:120px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <a class="brand" href="index.html">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="10" stroke="#A9843C" stroke-width="1.3"/>
+        <path d="M12 6.5v11M12 6.5c2.4 0 4.2.7 4.2 1.9s-1.8 1.9-4.2 1.9" stroke="#A9843C" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+      Glen Davis Golf Schools
+    </a>
+    <nav class="nav-links">
+      <a href="about.html">About</a>
+      <a href="program-rates.html">Program &amp; rates</a>
+      <a href="testimonials.html" class="active">Testimonials</a>
+      <a href="blog.html">Blog</a>
+    </nav>
+    <a class="nav-cta" href="contact-us.html">Contact</a>
+  </div>
+</header>
+
+<div class="page-hero">
+  <div class="wrap">
+    <div class="eyebrow">Testimonials</div>
+    <h1>What players are saying</h1>
+    <p>Real notes from students, in their own words — on handicaps, distance, and what changed once the video came out.</p>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    <div class="story-grid">
+      <div class="story-card">
+        <div class="story-top"><div class="avatar"></div><div><div class="story-name">Greg Cole</div><div class="story-tag">14 → 3 handicap, club champion</div></div></div>
+        <div class="story-quote">"I did one of your schools 2 years ago — I was a 14 handicap when I came to your school, now I'm a 3 handicap. I shot two rounds in the 60s this year and won my club championship. I would not have achieved this if I didn't go to your school — you completely changed my game."</div>
+      </div>
+      <div class="story-card">
+        <div class="story-top"><div class="avatar"></div><div><div class="story-name">Sandy &amp; partner</div><div class="story-tag">On the video review</div></div></div>
+        <div class="story-quote">"It's clear you are a very experienced professional instructor. Your many teaching props were excellent, but the video taping was the best by far. I never imagined my swing was so far off the mark."</div>
+      </div>
+      <div class="story-card">
+        <div class="story-top"><div class="avatar"></div><div><div class="story-name">Monday league player</div><div class="story-tag">+30 yards off the tee</div></div></div>
+        <div class="story-quote">"Today I played my first 18 holes since the school, in my Monday League. My partners were amazed at my new distance and consistency from the tee and fairway — their estimate was that I added at least 30 yards off the tee."</div>
+      </div>
+      <div class="story-card">
+        <div class="story-top"><div class="avatar"></div><div><div class="story-name">Visiting student</div><div class="story-tag">Winter drills paid off</div></div></div>
+        <div class="story-quote">"I followed your advice and practiced the drills you taught me through the winter, and they really made a difference when I finally got to play. I'm driving the ball farther than ever, and I can now recognize what I'm doing wrong when I hit a bad shot."</div>
+      </div>
+      <div class="story-card">
+        <div class="story-top"><div class="avatar"></div><div><div class="story-name">Five-time student</div><div class="story-tag">19 → 3.2 handicap</div></div></div>
+        <div class="story-quote">"I have attended five of Glen's schools over the past three years. I have gone from a 19 handicap to a 3.2, and I'm going lower. I'm 55 and driving the ball 270 instead of 220. What Glen could do that other teachers couldn't was give me a feel for the proper movements."</div>
+      </div>
+      <div class="story-card">
+        <div class="story-top"><div class="avatar"></div><div><div class="story-name">Returning student</div><div class="story-tag">26 → 16 handicap</div></div></div>
+        <div class="story-quote">"Since the lessons with you my handicap has dropped by ten shots, from 26 to 16 — but more importantly, I'm enjoying the game far more than I ever have."</div>
+      </div>
+      <div class="story-card">
+        <div class="story-top"><div class="avatar"></div><div><div class="story-name">Comparing golf schools</div><div class="story-tag">Three hours vs. three days</div></div></div>
+        <div class="story-quote">"We went to one of the big golf schools a few years ago. We learned more in three hours with Glen than we did at the other school in three days."</div>
+      </div>
+      <div class="story-card">
+        <div class="story-top"><div class="avatar"></div><div><div class="story-name">Student review</div><div class="story-tag">Spotting the source</div></div></div>
+        <div class="story-quote">"Glen has the unique ability to spot the source of the problem. This is a gift."</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div>Glen Davis Golf Schools — Myrtle Beach, SC</div>
+  <div>Site refreshed 2026 · content preserved from the original</div>
+</footer>
+
+</body>
+</html>

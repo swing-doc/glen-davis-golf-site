@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contact Us | Glen Davis Golf Schools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#152118; --forest:#1F3A26;
+    --cream:#FAF8F3; --panel:#FFFFFF;
+    --gold:#A9843C; --gold-deep:#8A6B2E;
+    --rule:rgba(21,33,24,0.10); --rule-strong:rgba(21,33,24,0.16);
+    --text:#1B241D; --text-dim:#5A625C;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--cream);color:var(--text);font-family:'Inter',sans-serif;font-size:16px;line-height:1.65;-webkit-font-smoothing:antialiased;}
+  h1,h2,h3{font-family:'Fraunces',serif;font-weight:500;letter-spacing:-0.01em;margin:0;color:var(--ink);}
+  p{margin:0 0 1em;color:var(--text-dim);}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 32px;}
+  a{color:inherit;}
+
+  header{position:sticky;top:0;z-index:50;background:rgba(250,248,243,0.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--rule);}
+  .nav{display:flex;align-items:center;justify-content:space-between;padding:22px 32px;max-width:1120px;margin:0 auto;}
+  .brand{font-family:'Fraunces',serif;font-size:19px;font-weight:500;display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--ink);}
+  .nav-links{display:flex;gap:36px;font-size:14px;}
+  .nav-links a{text-decoration:none;color:var(--text-dim);border-bottom:1px solid transparent;padding-bottom:3px;transition:border-color .2s,color .2s;}
+  .nav-links a:hover,.nav-links a.active{border-color:var(--gold);color:var(--ink);}
+  .nav-cta{font-size:14px;background:var(--forest);color:var(--cream);padding:12px 24px;border-radius:2px;text-decoration:none;white-space:nowrap;}
+  .nav-cta:hover{background:var(--ink);}
+  @media(max-width:760px){.nav-links{display:none;}}
+
+  .page-hero{padding:76px 0 60px;border-bottom:1px solid var(--rule);}
+  .eyebrow{font-size:13px;color:var(--gold-deep);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:16px;}
+  .page-hero h1{font-size:clamp(34px,4.4vw,52px);max-width:16ch;}
+
+  section{padding:80px 0 0;}
+  .contact-grid{display:grid;grid-template-columns:1fr 1.1fr;gap:70px;align-items:start;}
+  @media(max-width:860px){.contact-grid{grid-template-columns:1fr;gap:40px;}}
+
+  .info-list{list-style:none;margin:0 0 36px;padding:0;}
+  .info-list li{padding:20px 0;border-bottom:1px solid var(--rule);display:flex;flex-direction:column;gap:5px;}
+  .info-list li:first-child{padding-top:0;}
+  .info-label{font-size:12.5px;color:var(--gold-deep);text-transform:uppercase;letter-spacing:0.04em;}
+  .info-value{font-size:18px;font-family:'Fraunces',serif;color:var(--ink);}
+  .info-value a{text-decoration:none;color:var(--ink);border-bottom:1px solid var(--gold);}
+
+  .map-photo{aspect-ratio:4/3;border-radius:4px;overflow:hidden;}
+
+  form{display:flex;flex-direction:column;gap:18px;}
+  label{font-size:12.5px;color:var(--gold-deep);text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:7px;}
+  input,textarea{width:100%;font-family:'Inter',sans-serif;font-size:15px;padding:13px 16px;border:1px solid var(--rule-strong);border-radius:2px;background:var(--panel);color:var(--text);}
+  textarea{min-height:130px;resize:vertical;}
+  input:focus,textarea:focus{outline:none;border-color:var(--gold);}
+  .btn-primary{background:var(--forest);color:var(--cream);padding:15px 28px;text-decoration:none;font-size:14px;font-weight:500;border-radius:2px;border:none;cursor:pointer;align-self:flex-start;font-family:'Inter',sans-serif;}
+  .btn-primary:hover{background:var(--ink);}
+  .form-note{font-size:13px;color:var(--text-dim);margin-top:-4px;}
+
+  footer{background:var(--cream);border-top:1px solid var(--rule);padding:38px 32px;font-size:13px;color:var(--text-dim);display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;max-width:1120px;margin:0 auto;margin-top:120px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="nav">
+    <a class="brand" href="index.html">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="12" cy="12" r="10" stroke="#A9843C" stroke-width="1.3"/>
+        <path d="M12 6.5v11M12 6.5c2.4 0 4.2.7 4.2 1.9s-1.8 1.9-4.2 1.9" stroke="#A9843C" stroke-width="1.3" stroke-linecap="round"/>
+      </svg>
+      Glen Davis Golf Schools
+    </a>
+    <nav class="nav-links">
+      <a href="about.html">About</a>
+      <a href="program-rates.html">Program &amp; rates</a>
+      <a href="testimonials.html">Testimonials</a>
+      <a href="blog.html">Blog</a>
+    </nav>
+    <a class="nav-cta" href="contact-us.html">Contact</a>
+  </div>
+</header>
+
+<div class="page-hero">
+  <div class="wrap">
+    <div class="eyebrow">Contact</div>
+    <h1>Let's get you booked in.</h1>
+  </div>
+</div>
+
+<section>
+  <div class="wrap">
+    <div class="contact-grid">
+      <div>
+        <ul class="info-list">
+          <li><span class="info-label">Phone</span><span class="info-value"><a href="tel:+18432672288">(843) 267-2288</a></span></li>
+          <li><span class="info-label">Email</span><span class="info-value"><a href="mailto:swingdoc1@yahoo.com">swingdoc1@yahoo.com</a></span></li>
+          <li><span class="info-label">Location</span><span class="info-value">9480 Indigo Club Dr<br>Murrells Inlet, SC 29576</span></li>
+          <li><span class="info-label">Lesson hours</span><span class="info-value" style="font-family:'Inter',sans-serif; font-size:15px;">Monday – Saturday, mornings for schools, afternoons for private lessons</span></li>
+        </ul>
+        <div class="map-photo">
+          <svg viewBox="0 0 700 525" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%;">
+            <rect width="700" height="525" fill="#EFEADD"/>
+            <path d="M0 120 H700 M0 250 H700 M0 380 H700" stroke="#DDD5BE" stroke-width="1.5"/>
+            <path d="M120 0 V525 M340 0 V525 M560 0 V525" stroke="#DDD5BE" stroke-width="1.5"/>
+            <circle cx="340" cy="250" r="14" fill="#1F3A26"/>
+            <path d="M340 250 L340 190" stroke="#1F3A26" stroke-width="4"/>
+            <path d="M340 190 L390 205 L340 220 Z" fill="#A9843C"/>
+          </svg>
+        </div>
+      </div>
+      <form onsubmit="return false;">
+        <div><label for="name">Name</label><input id="name" type="text" placeholder="Your name" required></div>
+        <div><label for="email">Email</label><input id="email" type="email" placeholder="you@email.com" required></div>
+        <div><label for="phone">Phone</label><input id="phone" type="tel" placeholder="(555) 555-5555"></div>
+        <div><label for="message">What are you looking for?</label><textarea id="message" placeholder="Tell Glen a bit about your game and when you'd like to come in." required></textarea></div>
+        <button class="btn-primary" type="submit">Send message</button>
+        <p class="form-note">This form is a placeholder — connect it to your email or booking tool to go live. Until then, call or email directly using the details on the left.</p>
+      </form>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div>Glen Davis Golf Schools — Murrells Inlet, SC</div>
+  <div>Site refreshed 2026 · content preserved from the original</div>
+</footer>
+
+</body>
+</html>
