@@ -31,7 +31,13 @@
   .nav-links a:hover,.nav-links a.active{border-color:var(--gold);color:var(--ink);}
   .nav-cta{font-size:14px;background:var(--forest);color:var(--cream);padding:12px 24px;border-radius:2px;text-decoration:none;white-space:nowrap;letter-spacing:0.01em;}
   .nav-cta:hover{background:var(--ink);}
-  @media(max-width:760px){.nav-links{display:none;}}
+  .nav-toggle{display:none;background:none;border:none;padding:8px;margin:-8px -8px -8px 4px;cursor:pointer;}
+  .nav-toggle svg{display:block;}
+  .mobile-menu{display:none;flex-direction:column;padding:4px 32px 20px;border-top:1px solid var(--rule);background:var(--cream);}
+  .mobile-menu a{padding:14px 0;font-size:15px;text-decoration:none;color:var(--text-dim);border-bottom:1px solid var(--rule);}
+  .mobile-menu a.active{color:var(--ink);}
+  .mobile-menu.open{display:flex;}
+  @media(max-width:760px){.nav-links{display:none;} .nav-toggle{display:block;}}
 
   .hero{background:var(--ink);color:var(--cream);position:relative;overflow:hidden;}
   .hero-inner{max-width:1120px;margin:0 auto;padding:130px 32px 110px;position:relative;z-index:2;}
@@ -118,7 +124,17 @@
       <a href="blog.html">Blog</a>
     </nav>
     <a class="nav-cta" href="contact-us.html">Contact</a>
+    <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 7h16M4 12h16M4 17h16" stroke="#152118" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </button>
   </div>
+  <div class="mobile-menu" id="mobileMenu">
+      <a href="about.html">About</a>
+      <a href="program-rates.html">Program &amp; rates</a>
+      <a href="testimonials.html">Testimonials</a>
+      <a href="blog.html">Blog</a>
+      <a href="contact-us.html">Contact</a>
+    </div>
 </header>
 
 <section class="hero" style="padding-top:0;">
@@ -248,5 +264,15 @@
   <div>Site refreshed 2026 · content preserved from the original</div>
 </footer>
 
+
+<script>
+  var navToggle = document.getElementById('navToggle');
+  var mobileMenu = document.getElementById('mobileMenu');
+  if (navToggle && mobileMenu) {
+    navToggle.addEventListener('click', function () {
+      mobileMenu.classList.toggle('open');
+    });
+  }
+</script>
 </body>
 </html>
