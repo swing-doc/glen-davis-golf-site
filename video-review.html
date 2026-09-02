@@ -244,7 +244,7 @@
 
           <div class="review-card">
             <div class="review-thumb" id="reviewThumb">
-              <img src="images/bunker-swing.jpg" alt="Sample swing review thumbnail" id="feedbackThumbImg">
+              <img src="images/driving-range.jpg" alt="Sample swing review thumbnail" id="feedbackThumbImg">
               <video id="feedbackVideo" muted playsinline style="display:none;"></video>
               <div class="play"><span>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7-11-7z" fill="#152118"/></svg>
@@ -329,6 +329,7 @@
   var feedbackVideo = document.getElementById('feedbackVideo');
   var chosenObjectUrl = null;
   var chosenFileName = '';
+  var chosenIsVideo = false;
 
   function showPanel(n) {
     [panel1, panel2, panel3].forEach(function (p) { p.classList.remove('active'); });
@@ -380,28 +381,25 @@
     if (chosenObjectUrl) URL.revokeObjectURL(chosenObjectUrl);
     chosenObjectUrl = URL.createObjectURL(file);
     chosenFileName = file.name;
+    chosenIsVideo = file.type.indexOf('video/') === 0;
     var sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+    var previewTag = chosenIsVideo
+      ? '<video src="' + chosenObjectUrl + '" muted></video>'
+      : '<img src="' + chosenObjectUrl + '" alt="Selected file preview">';
     filePreviewSlot.innerHTML =
       '<div class="file-preview">' +
-      '<video src="' + chosenObjectUrl + '" muted></video>' +
+      previewTag +
       '<div><div class="fname">' + file.name + '</div><div class="fsize">' + sizeMB + ' MB — ready to submit (stays on your device in this demo)</div></div>' +
       '</div>';
   }
 
   function setupPanel3Media() {
     yourSwingThumb.classList.remove('playing');
-    if (chosenObjectUrl) {
-      yourSwingVideo.src = chosenObjectUrl;
-      yourSwingVideo.controls = false;
-      yourSwingVideo.style.display = 'block';
-      yourSwingSampleImg.style.display = 'none';
-      yourSwingCaption.textContent = 'The video you just uploaded (' + chosenFileName + '). Click to play.';
-    } else {
-      yourSwingVideo.removeAttribute('src');
-      yourSwingVideo.style.display = 'none';
-      yourSwingSampleImg.style.display = 'block';
-      yourSwingCaption.textContent = "You didn't choose a file in this run, so here's a sample of what a submitted swing looks like.";
-    }
+    yourSwingVideo.removeAttribute('src');
+    yourSwingVideo.style.display = 'none';
+    yourSwingSampleImg.src = 'images/sample-feedback-swing.gif';
+    yourSwingSampleImg.style.display = 'block';
+    yourSwingCaption.textContent = "This is the swing you just submitted.";
   }
 
   if (submitBtn) {
