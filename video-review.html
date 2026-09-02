@@ -73,12 +73,17 @@
 
   .success-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(169,132,60,0.12);color:var(--gold-deep);font-size:13px;padding:8px 14px;border-radius:20px;margin-bottom:18px;}
 
+  .review-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  @media(max-width:760px){.review-grid{grid-template-columns:1fr;}}
+
   .review-card{background:var(--panel);border:1px solid var(--rule-strong);border-radius:4px;overflow:hidden;}
   .review-thumb{position:relative;aspect-ratio:16/9;background:var(--ink);cursor:pointer;overflow:hidden;}
   .review-thumb img{width:100%;height:100%;object-fit:cover;opacity:0.7;}
-  .review-thumb .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
-  .review-thumb .play span{width:64px;height:64px;border-radius:50%;background:rgba(250,248,243,0.92);display:flex;align-items:center;justify-content:center;}
-  .review-body{padding:26px 28px;}
+  .review-thumb video{width:100%;height:100%;object-fit:cover;background:#000;}
+  .review-thumb .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
+  .review-thumb .play span{width:56px;height:56px;border-radius:50%;background:rgba(250,248,243,0.92);display:flex;align-items:center;justify-content:center;}
+  .review-thumb.playing .play{display:none;}
+  .review-body{padding:22px 24px;}
   .review-body h4{font-size:18px;margin-bottom:10px;}
   .transcript{background:var(--cream);border-radius:4px;padding:18px 20px;margin-top:16px;font-size:14px;color:var(--text);border-left:3px solid var(--gold);}
   .transcript p{margin-bottom:0.7em;color:var(--text);}
@@ -222,20 +227,36 @@
         <h3 style="margin-bottom:8px;">Here's what you'll get back</h3>
         <p style="margin-bottom:24px;">Usually within 48 hours, you'll get an email with a link like this one:</p>
 
-        <div class="review-card">
-          <div class="review-thumb" id="reviewThumb">
-            <img src="images/bunker-swing.jpg" alt="Sample swing review thumbnail">
-            <div class="play"><span>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7-11-7z" fill="#152118"/></svg>
-            </span></div>
+        <div class="review-grid">
+          <div class="review-card">
+            <div class="review-thumb" id="yourSwingThumb">
+              <video id="yourSwingVideo" muted playsinline></video>
+              <div class="play" id="yourSwingPlay"><span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7-11-7z" fill="#152118"/></svg>
+              </span></div>
+            </div>
+            <div class="review-body">
+              <h4>Your Swing</h4>
+              <p style="margin-bottom:0;" id="yourSwingCaption">The video you just uploaded.</p>
+            </div>
           </div>
-          <div class="review-body">
-            <h4>Your Swing Breakdown — from Glen</h4>
-            <p style="margin-bottom:0;">A short video of Glen talking through your swing, pointing things out on screen as it plays.</p>
-            <div class="transcript" id="transcript" style="display:none;">
-              <p><span class="ts">0:03</span>Nice tempo on the takeaway — that part looks great.</p>
-              <p><span class="ts">0:11</span>Right here, watch how the arms pull in toward the body instead of extending out.</p>
-              <p><span class="ts">0:19</span>That's what's costing you distance and causing the slice. Let's fix it with a drill.</p>
+
+          <div class="review-card">
+            <div class="review-thumb" id="reviewThumb">
+              <img src="images/sample-feedback-swing.gif" alt="Sample swing review clip" id="feedbackThumbImg">
+              <video id="feedbackVideo" muted playsinline style="display:none;"></video>
+              <div class="play"><span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7-11-7z" fill="#152118"/></svg>
+              </span></div>
+            </div>
+            <div class="review-body">
+              <h4>Your Swing Breakdown — from Glen</h4>
+              <p style="margin-bottom:0;">A short video of Glen talking through your swing, pointing things out on screen as it plays.</p>
+              <div class="transcript" id="transcript" style="display:none;">
+                <p><span class="ts">0:03</span>Nice tempo on the takeaway — that part looks great.</p>
+                <p><span class="ts">0:11</span>Right here, watch how the arms pull in toward the body instead of extending out.</p>
+                <p><span class="ts">0:19</span>That's what's costing you distance and causing the slice. Let's fix it with a drill.</p>
+              </div>
             </div>
           </div>
         </div>
@@ -299,7 +320,13 @@
   var filePreviewSlot = document.getElementById('filePreviewSlot');
   var reviewThumb = document.getElementById('reviewThumb');
   var transcript = document.getElementById('transcript');
+  var yourSwingThumb = document.getElementById('yourSwingThumb');
+  var yourSwingVideo = document.getElementById('yourSwingVideo');
+  var yourSwingCaption = document.getElementById('yourSwingCaption');
+  var feedbackThumbImg = document.getElementById('feedbackThumbImg');
+  var feedbackVideo = document.getElementById('feedbackVideo');
   var chosenObjectUrl = null;
+  var chosenFileName = '';
 
   function showPanel(n) {
     [panel1, panel2, panel3].forEach(function (p) { p.classList.remove('active'); });
@@ -350,6 +377,7 @@
   function handleFile(file) {
     if (chosenObjectUrl) URL.revokeObjectURL(chosenObjectUrl);
     chosenObjectUrl = URL.createObjectURL(file);
+    chosenFileName = file.name;
     var sizeMB = (file.size / (1024 * 1024)).toFixed(1);
     filePreviewSlot.innerHTML =
       '<div class="file-preview">' +
@@ -358,21 +386,55 @@
       '</div>';
   }
 
+  function setupPanel3Media() {
+    yourSwingThumb.classList.remove('playing');
+    if (chosenObjectUrl) {
+      yourSwingVideo.src = chosenObjectUrl;
+      yourSwingVideo.controls = false;
+      yourSwingCaption.textContent = 'The video you just uploaded (' + chosenFileName + '). Click to play.';
+    } else {
+      yourSwingVideo.removeAttribute('src');
+      yourSwingCaption.textContent = 'No video was chosen in this run — restart the demo and pick a file to see it play here.';
+    }
+  }
+
   if (submitBtn) {
     submitBtn.addEventListener('click', function () {
       submitBtn.disabled = true;
       submitBtn.innerHTML = '<span class="spinner"></span>Submitting…';
       setTimeout(function () {
         showPanel(3);
+        setupPanel3Media();
         submitBtn.disabled = false;
         submitBtn.innerHTML = 'Submit My Swing';
       }, 1100);
     });
   }
 
+  if (yourSwingThumb) {
+    yourSwingThumb.addEventListener('click', function () {
+      if (!yourSwingVideo.getAttribute('src')) return;
+      if (yourSwingVideo.paused) {
+        yourSwingVideo.controls = true;
+        yourSwingVideo.play();
+        yourSwingThumb.classList.add('playing');
+      } else {
+        yourSwingVideo.pause();
+      }
+    });
+  }
+
   if (reviewThumb) {
     reviewThumb.addEventListener('click', function () {
-      transcript.style.display = transcript.style.display === 'block' ? 'none' : 'block';
+      if (feedbackVideo.getAttribute('src')) {
+        feedbackThumbImg.style.display = 'none';
+        feedbackVideo.style.display = 'block';
+        feedbackVideo.controls = true;
+        feedbackVideo.play();
+        reviewThumb.classList.add('playing');
+      } else {
+        transcript.style.display = transcript.style.display === 'block' ? 'none' : 'block';
+      }
     });
   }
 
@@ -383,6 +445,14 @@
       transcript.style.display = 'none';
       document.getElementById('dName').value = '';
       document.getElementById('dEmail').value = '';
+      yourSwingVideo.pause();
+      yourSwingVideo.removeAttribute('src');
+      yourSwingVideo.controls = false;
+      yourSwingThumb.classList.remove('playing');
+      feedbackVideo.pause();
+      feedbackVideo.style.display = 'none';
+      feedbackThumbImg.style.display = 'block';
+      reviewThumb.classList.remove('playing');
       showPanel(1);
     });
   }
