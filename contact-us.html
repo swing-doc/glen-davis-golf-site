@@ -110,13 +110,16 @@
           </svg>
         </div>
       </div>
-      <form onsubmit="return false;">
-        <div><label for="name">Name</label><input id="name" type="text" placeholder="Your name" required></div>
-        <div><label for="email">Email</label><input id="email" type="email" placeholder="you@email.com" required></div>
-        <div><label for="phone">Phone</label><input id="phone" type="tel" placeholder="(555) 555-5555"></div>
-        <div><label for="message">What are you looking for?</label><textarea id="message" placeholder="Tell Glen a bit about your game and when you'd like to come in." required></textarea></div>
+      <form action="https://formsubmit.co/swingdoc1@yahoo.com" method="POST">
+        <input type="hidden" name="_subject" value="New inquiry from Glen Davis Golf Schools website">
+        <input type="hidden" name="_template" value="table">
+        <input type="hidden" name="_captcha" value="false">
+        <div><label for="name">Name</label><input id="name" name="name" type="text" placeholder="Your name" required></div>
+        <div><label for="email">Email</label><input id="email" name="email" type="email" placeholder="you@email.com" required></div>
+        <div><label for="phone">Phone</label><input id="phone" name="phone" type="tel" placeholder="(555) 555-5555"></div>
+        <div><label for="message">What are you looking for?</label><textarea id="message" name="message" placeholder="Tell Glen a bit about your game and when you'd like to come in." required></textarea></div>
         <button class="btn-primary" type="submit">Send message</button>
-        <p class="form-note">This form is a placeholder — connect it to your email or booking tool to go live. Until then, call or email directly using the details on the left.</p>
+        <p class="form-note">Submitting this form sends your message straight to Glen's inbox.</p>
       </form>
     </div>
   </div>
