@@ -41,6 +41,53 @@
   .sample-banner{background:#3A2E12;color:#F3E2B8;text-align:center;font-size:13.5px;padding:12px 20px;letter-spacing:0.02em;}
   .sample-banner strong{color:#F7C948;}
 
+  .demo-panels{position:relative;}
+  .demo-panel{display:none;}
+  .demo-panel.active{display:block;animation:fadeIn .35s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+  .progress-track{display:flex;gap:8px;margin-bottom:28px;}
+  .progress-dot{flex:1;height:3px;background:var(--rule-strong);border-radius:2px;overflow:hidden;}
+  .progress-dot i{display:block;height:100%;width:0%;background:var(--gold);transition:width .4s ease;}
+  .progress-dot.done i{width:100%;}
+  .progress-dot.current i{width:100%;}
+
+  .spinner{width:18px;height:18px;border:2px solid rgba(21,33,24,0.2);border-top-color:var(--ink);border-radius:50%;display:inline-block;animation:spin .7s linear infinite;vertical-align:-3px;margin-right:9px;}
+  .btn-primary .spinner{border:2px solid rgba(250,248,243,0.35);border-top-color:var(--ink);}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .upload-box{border:2px dashed var(--rule-strong);border-radius:4px;padding:36px 24px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;}
+  .upload-box:hover,.upload-box.drag{border-color:var(--gold);background:rgba(169,132,60,0.06);}
+  .upload-box input{display:none;}
+  .upload-box .icon{margin-bottom:12px;}
+  .upload-box .hint{font-size:13px;color:var(--text-dim);margin-top:4px;}
+  .file-preview{display:flex;align-items:center;gap:14px;background:var(--panel);border:1px solid var(--rule-strong);border-radius:4px;padding:14px 16px;margin-top:16px;}
+  .file-preview video{width:64px;height:48px;object-fit:cover;border-radius:3px;background:#000;}
+  .file-preview .fname{font-size:14px;color:var(--ink);word-break:break-all;}
+  .file-preview .fsize{font-size:12.5px;color:var(--text-dim);}
+
+  form.demo-form{display:flex;flex-direction:column;gap:16px;margin-top:24px;}
+  form.demo-form label{font-size:12.5px;color:var(--gold-deep);text-transform:uppercase;letter-spacing:0.04em;display:block;margin-bottom:6px;}
+  form.demo-form input{width:100%;font-family:'Inter',sans-serif;font-size:15px;padding:12px 15px;border:1px solid var(--rule-strong);border-radius:2px;background:var(--panel);color:var(--text);}
+  form.demo-form input:focus{outline:none;border-color:var(--gold);}
+
+  .success-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(169,132,60,0.12);color:var(--gold-deep);font-size:13px;padding:8px 14px;border-radius:20px;margin-bottom:18px;}
+
+  .review-card{background:var(--panel);border:1px solid var(--rule-strong);border-radius:4px;overflow:hidden;}
+  .review-thumb{position:relative;aspect-ratio:16/9;background:var(--ink);cursor:pointer;overflow:hidden;}
+  .review-thumb img{width:100%;height:100%;object-fit:cover;opacity:0.7;}
+  .review-thumb .play{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;}
+  .review-thumb .play span{width:64px;height:64px;border-radius:50%;background:rgba(250,248,243,0.92);display:flex;align-items:center;justify-content:center;}
+  .review-body{padding:26px 28px;}
+  .review-body h4{font-size:18px;margin-bottom:10px;}
+  .transcript{background:var(--cream);border-radius:4px;padding:18px 20px;margin-top:16px;font-size:14px;color:var(--text);border-left:3px solid var(--gold);}
+  .transcript p{margin-bottom:0.7em;color:var(--text);}
+  .transcript p:last-child{margin-bottom:0;}
+  .transcript .ts{color:var(--gold-deep);font-weight:600;margin-right:6px;}
+
+  .btn-secondary{display:inline-block;background:transparent;color:var(--gold-deep);border:1px solid var(--rule-strong);padding:12px 22px;font-size:13.5px;border-radius:2px;cursor:pointer;font-family:'Inter',sans-serif;margin-top:18px;}
+  .btn-secondary:hover{border-color:var(--gold);}
+
   .page-hero{padding:76px 0 60px;border-bottom:1px solid var(--rule);}
   .eyebrow{font-size:13px;color:var(--gold-deep);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:16px;}
   .page-hero h1{font-size:clamp(34px,4.4vw,52px);max-width:20ch;}
@@ -73,7 +120,7 @@
 <body>
 
 <div class="sample-banner">
-  <strong>Sample page — for review only.</strong> Payment and video upload are not connected yet.
+  <strong>Test mode — click through it.</strong> No real charge, nothing is actually uploaded or sent anywhere. This is a working preview of how the feature will feel once it's live.
 </div>
 
 <header>
@@ -115,16 +162,85 @@
 
 <section>
   <div class="wrap">
-    <div class="offer-card">
-      <div>
-        <h3>Video Swing Review</h3>
-        <p>Submit a short video of your swing from your phone. Glen will personally watch it and record a video breakdown pointing out what to work on — sent right back to you.</p>
+    <div class="progress-track">
+      <div class="progress-dot current" id="dot1"><i></i></div>
+      <div class="progress-dot" id="dot2"><i></i></div>
+      <div class="progress-dot" id="dot3"><i></i></div>
+    </div>
+
+    <div class="demo-panels">
+
+      <!-- PANEL 1: Pay -->
+      <div class="demo-panel active" id="panel1">
+        <div class="offer-card">
+          <div>
+            <h3>Video Swing Review</h3>
+            <p>Submit a short video of your swing from your phone. Glen will personally watch it and record a video breakdown pointing out what to work on — sent right back to you.</p>
+          </div>
+          <div class="price-box">
+            <div class="price">$35</div>
+            <div class="price-note">One swing, one personal review</div>
+            <button class="btn-primary" id="payBtn" type="button">Pay $35 &amp; Get Started</button>
+          </div>
+        </div>
       </div>
-      <div class="price-box">
-        <div class="price">$35</div>
-        <div class="price-note">One swing, one personal review</div>
-        <button class="btn-primary" disabled>Pay $35 &amp; Get Started</button>
+
+      <!-- PANEL 2: Upload -->
+      <div class="demo-panel" id="panel2">
+        <div class="offer-card" style="grid-template-columns:1fr;">
+          <div>
+            <div class="success-badge">✓ Payment successful — test mode</div>
+            <h3>Now upload your swing video</h3>
+            <p>Any angle works — down-the-line or face-on is best. This preview just shows the file locally; nothing leaves your device.</p>
+
+            <label class="upload-box" id="uploadBox" for="videoInput">
+              <input type="file" id="videoInput" accept="video/*">
+              <div class="icon">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 16V4M12 4L7 9M12 4l5 5" stroke="#A9843C" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" stroke="#A9843C" stroke-width="1.6" stroke-linecap="round"/></svg>
+              </div>
+              <div>Tap to choose a video, or drag one in</div>
+              <div class="hint">MP4 or MOV, up to a couple minutes long</div>
+            </label>
+
+            <div id="filePreviewSlot"></div>
+
+            <form class="demo-form">
+              <div><label for="dName">Name</label><input id="dName" type="text" placeholder="Your name"></div>
+              <div><label for="dEmail">Email</label><input id="dEmail" type="email" placeholder="you@email.com"></div>
+            </form>
+
+            <button class="btn-primary" id="submitBtn" type="button" style="margin-top:20px;">Submit My Swing</button>
+          </div>
+        </div>
       </div>
+
+      <!-- PANEL 3: Feedback delivered -->
+      <div class="demo-panel" id="panel3">
+        <div class="success-badge">✓ Submitted — test mode</div>
+        <h3 style="margin-bottom:8px;">Here's what you'll get back</h3>
+        <p style="margin-bottom:24px;">Usually within 48 hours, you'll get an email with a link like this one:</p>
+
+        <div class="review-card">
+          <div class="review-thumb" id="reviewThumb">
+            <img src="images/bunker-swing.jpg" alt="Sample swing review thumbnail">
+            <div class="play"><span>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7-11-7z" fill="#152118"/></svg>
+            </span></div>
+          </div>
+          <div class="review-body">
+            <h4>Your Swing Breakdown — from Glen</h4>
+            <p style="margin-bottom:0;">A short video of Glen talking through your swing, pointing things out on screen as it plays.</p>
+            <div class="transcript" id="transcript" style="display:none;">
+              <p><span class="ts">0:03</span>Nice tempo on the takeaway — that part looks great.</p>
+              <p><span class="ts">0:11</span>Right here, watch how the arms pull in toward the body instead of extending out.</p>
+              <p><span class="ts">0:19</span>That's what's costing you distance and causing the slice. Let's fix it with a drill.</p>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-secondary" type="button" id="restartBtn">Restart demo</button>
+      </div>
+
     </div>
   </div>
 </section>
@@ -163,6 +279,109 @@
   if (navToggle && mobileMenu) {
     navToggle.addEventListener('click', function () {
       mobileMenu.classList.toggle('open');
+    });
+  }
+
+  // ---- Video Review demo flow ----
+  var panel1 = document.getElementById('panel1');
+  var panel2 = document.getElementById('panel2');
+  var panel3 = document.getElementById('panel3');
+  var dot1 = document.getElementById('dot1');
+  var dot2 = document.getElementById('dot2');
+  var dot3 = document.getElementById('dot3');
+  var payBtn = document.getElementById('payBtn');
+  var submitBtn = document.getElementById('submitBtn');
+  var restartBtn = document.getElementById('restartBtn');
+  var videoInput = document.getElementById('videoInput');
+  var uploadBox = document.getElementById('uploadBox');
+  var filePreviewSlot = document.getElementById('filePreviewSlot');
+  var reviewThumb = document.getElementById('reviewThumb');
+  var transcript = document.getElementById('transcript');
+  var chosenObjectUrl = null;
+
+  function showPanel(n) {
+    [panel1, panel2, panel3].forEach(function (p) { p.classList.remove('active'); });
+    [dot1, dot2, dot3].forEach(function (d) { d.classList.remove('current', 'done'); });
+    if (n === 1) { panel1.classList.add('active'); dot1.classList.add('current'); }
+    if (n === 2) {
+      panel2.classList.add('active');
+      dot1.classList.add('done'); dot2.classList.add('current');
+    }
+    if (n === 3) {
+      panel3.classList.add('active');
+      dot1.classList.add('done'); dot2.classList.add('done'); dot3.classList.add('current');
+    }
+    window.scrollTo({ top: panel1.closest('section').offsetTop - 90, behavior: 'smooth' });
+  }
+
+  if (payBtn) {
+    payBtn.addEventListener('click', function () {
+      payBtn.disabled = true;
+      payBtn.innerHTML = '<span class="spinner"></span>Processing payment…';
+      setTimeout(function () {
+        showPanel(2);
+        payBtn.disabled = false;
+        payBtn.innerHTML = 'Pay $35 &amp; Get Started';
+      }, 1100);
+    });
+  }
+
+  if (uploadBox && videoInput) {
+    ['dragover'].forEach(function (evt) {
+      uploadBox.addEventListener(evt, function (e) { e.preventDefault(); uploadBox.classList.add('drag'); });
+    });
+    ['dragleave', 'drop'].forEach(function (evt) {
+      uploadBox.addEventListener(evt, function (e) { uploadBox.classList.remove('drag'); });
+    });
+    uploadBox.addEventListener('drop', function (e) {
+      e.preventDefault();
+      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+        videoInput.files = e.dataTransfer.files;
+        handleFile(e.dataTransfer.files[0]);
+      }
+    });
+    videoInput.addEventListener('change', function () {
+      if (videoInput.files && videoInput.files[0]) handleFile(videoInput.files[0]);
+    });
+  }
+
+  function handleFile(file) {
+    if (chosenObjectUrl) URL.revokeObjectURL(chosenObjectUrl);
+    chosenObjectUrl = URL.createObjectURL(file);
+    var sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+    filePreviewSlot.innerHTML =
+      '<div class="file-preview">' +
+      '<video src="' + chosenObjectUrl + '" muted></video>' +
+      '<div><div class="fname">' + file.name + '</div><div class="fsize">' + sizeMB + ' MB — ready to submit (stays on your device in this demo)</div></div>' +
+      '</div>';
+  }
+
+  if (submitBtn) {
+    submitBtn.addEventListener('click', function () {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="spinner"></span>Submitting…';
+      setTimeout(function () {
+        showPanel(3);
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Submit My Swing';
+      }, 1100);
+    });
+  }
+
+  if (reviewThumb) {
+    reviewThumb.addEventListener('click', function () {
+      transcript.style.display = transcript.style.display === 'block' ? 'none' : 'block';
+    });
+  }
+
+  if (restartBtn) {
+    restartBtn.addEventListener('click', function () {
+      filePreviewSlot.innerHTML = '';
+      videoInput.value = '';
+      transcript.style.display = 'none';
+      document.getElementById('dName').value = '';
+      document.getElementById('dEmail').value = '';
+      showPanel(1);
     });
   }
 </script>
