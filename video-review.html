@@ -230,7 +230,8 @@
         <div class="review-grid">
           <div class="review-card">
             <div class="review-thumb" id="yourSwingThumb">
-              <video id="yourSwingVideo" muted playsinline></video>
+              <video id="yourSwingVideo" muted playsinline style="display:none;"></video>
+              <img src="images/sample-feedback-swing.gif" alt="Sample submitted swing" id="yourSwingSampleImg">
               <div class="play" id="yourSwingPlay"><span>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7-11-7z" fill="#152118"/></svg>
               </span></div>
@@ -243,7 +244,7 @@
 
           <div class="review-card">
             <div class="review-thumb" id="reviewThumb">
-              <img src="images/sample-feedback-swing.gif" alt="Sample swing review clip" id="feedbackThumbImg">
+              <img src="images/bunker-swing.jpg" alt="Sample swing review thumbnail" id="feedbackThumbImg">
               <video id="feedbackVideo" muted playsinline style="display:none;"></video>
               <div class="play"><span>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7-11-7z" fill="#152118"/></svg>
@@ -322,6 +323,7 @@
   var transcript = document.getElementById('transcript');
   var yourSwingThumb = document.getElementById('yourSwingThumb');
   var yourSwingVideo = document.getElementById('yourSwingVideo');
+  var yourSwingSampleImg = document.getElementById('yourSwingSampleImg');
   var yourSwingCaption = document.getElementById('yourSwingCaption');
   var feedbackThumbImg = document.getElementById('feedbackThumbImg');
   var feedbackVideo = document.getElementById('feedbackVideo');
@@ -391,10 +393,14 @@
     if (chosenObjectUrl) {
       yourSwingVideo.src = chosenObjectUrl;
       yourSwingVideo.controls = false;
+      yourSwingVideo.style.display = 'block';
+      yourSwingSampleImg.style.display = 'none';
       yourSwingCaption.textContent = 'The video you just uploaded (' + chosenFileName + '). Click to play.';
     } else {
       yourSwingVideo.removeAttribute('src');
-      yourSwingCaption.textContent = 'No video was chosen in this run — restart the demo and pick a file to see it play here.';
+      yourSwingVideo.style.display = 'none';
+      yourSwingSampleImg.style.display = 'block';
+      yourSwingCaption.textContent = "You didn't choose a file in this run, so here's a sample of what a submitted swing looks like.";
     }
   }
 
