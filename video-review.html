@@ -115,8 +115,10 @@
   .note-btn .note-text{font-size:14px;color:var(--text);}
   @media(max-width:760px){.analysis-video-wrap,.analysis-controls,.scrub-row,.notes-list,.draw-toolbar{max-width:100%;}}
 
+  #poseCanvas{position:absolute;top:0;left:0;pointer-events:none;}
   #drawCanvas{position:absolute;top:0;left:0;pointer-events:none;touch-action:none;}
   #drawCanvas.drawing-active{pointer-events:auto;cursor:crosshair;}
+  .ctrl-btn.loading{opacity:0.65;cursor:wait;}
   .draw-toolbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:14px;max-width:480px;background:var(--cream);border:1px solid var(--rule-strong);border-radius:3px;padding:10px 14px;}
   .tool-group{display:flex;gap:3px;background:var(--panel);border:1px solid var(--rule-strong);border-radius:3px;padding:3px;}
   .tool-btn{background:transparent;border:none;padding:7px 12px;font-size:12.5px;border-radius:2px;cursor:pointer;color:var(--text-dim);font-family:'Inter',sans-serif;}
@@ -302,6 +304,7 @@
 
           <div class="analysis-video-wrap" id="analysisVideoWrap">
             <video id="analysisVideo" src="images/sample-swing.mp4" playsinline muted preload="metadata"></video>
+            <canvas id="poseCanvas"></canvas>
             <canvas id="drawCanvas"></canvas>
           </div>
 
@@ -319,6 +322,7 @@
             </div>
             <button class="ctrl-btn" id="drawToggleBtn" type="button">✏️ Draw on frame</button>
             <button class="ctrl-btn" id="flipToggleBtn" type="button">&#8646; Flip</button>
+            <button class="ctrl-btn" id="poseToggleBtn" type="button">🦴 AI Pose Overlay</button>
           </div>
 
           <div class="draw-toolbar" id="drawToolbar" style="display:none;">
@@ -418,6 +422,8 @@
   <div>Site refreshed 2026 · content preserved from the original</div>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
 <script>
   var navToggle = document.getElementById('navToggle');
   var mobileMenu = document.getElementById('mobileMenu');
@@ -460,6 +466,9 @@
   var drawCtx = drawCanvas ? drawCanvas.getContext('2d') : null;
   var drawToggleBtn = document.getElementById('drawToggleBtn');
   var flipToggleBtn = document.getElementById('flipToggleBtn');
+  var poseToggleBtn = document.getElementById('poseToggleBtn');
+  var poseCanvas = document.getElementById('poseCanvas');
+  var poseCtx = poseCanvas ? poseCanvas.getContext('2d') : null;
   var drawToolbar = document.getElementById('drawToolbar');
   var toolBtns = document.querySelectorAll('.tool-btn');
   var colorSwatches = document.querySelectorAll('.color-swatch');
@@ -677,6 +686,15 @@
     drawCanvas.width = renderedW;
     drawCanvas.height = renderedH;
     redrawStrokes();
+
+    if (poseCanvas) {
+      poseCanvas.style.width = renderedW + 'px';
+      poseCanvas.style.height = renderedH + 'px';
+      poseCanvas.style.left = offsetX + 'px';
+      poseCanvas.style.top = offsetY + 'px';
+      poseCanvas.width = renderedW;
+      poseCanvas.height = renderedH;
+    }
   }
 
   function redrawStrokes() {
@@ -876,6 +894,113 @@
     setComparePlayLabel(false);
   }
 
+  // ---- AI pose overlay (TensorFlow.js MoveNet, runs entirely in the browser) ----
+  var poseDetector = null;
+  var poseActive = false;
+  var poseLoopHandle = null;
+  var poseLoading = false;
+
+  var POSE_CONNECTIONS = [
+    ['left_shoulder', 'right_shoulder'], ['left_shoulder', 'left_elbow'], ['left_elbow', 'left_wrist'],
+    ['right_shoulder', 'right_elbow'], ['right_elbow', 'right_wrist'],
+    ['left_shoulder', 'left_hip'], ['right_shoulder', 'right_hip'], ['left_hip', 'right_hip'],
+    ['left_hip', 'left_knee'], ['left_knee', 'left_ankle'],
+    ['right_hip', 'right_knee'], ['right_knee', 'right_ankle']
+  ];
+
+  async function ensurePoseDetector() {
+    if (poseDetector) return poseDetector;
+    if (typeof tf === 'undefined' || typeof poseDetection === 'undefined') {
+      throw new Error('pose libraries not loaded');
+    }
+    await tf.ready();
+    poseDetector = await poseDetection.createDetector(
+      poseDetection.SupportedModels.MoveNet,
+      { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING }
+    );
+    return poseDetector;
+  }
+
+  function drawSkeleton(keypoints) {
+    if (!poseCtx || !poseCanvas) return;
+    poseCtx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
+    var vw = analysisVideo.videoWidth, vh = analysisVideo.videoHeight;
+    if (!vw || !vh) return;
+    var scaleX = poseCanvas.width / vw, scaleY = poseCanvas.height / vh;
+    var byName = {};
+    keypoints.forEach(function (kp) { byName[kp.name] = kp; });
+
+    poseCtx.strokeStyle = '#39E58C';
+    poseCtx.lineWidth = 3;
+    POSE_CONNECTIONS.forEach(function (pair) {
+      var a = byName[pair[0]], b = byName[pair[1]];
+      if (a && b && a.score > 0.3 && b.score > 0.3) {
+        poseCtx.beginPath();
+        poseCtx.moveTo(a.x * scaleX, a.y * scaleY);
+        poseCtx.lineTo(b.x * scaleX, b.y * scaleY);
+        poseCtx.stroke();
+      }
+    });
+
+    poseCtx.fillStyle = '#F4C542';
+    keypoints.forEach(function (kp) {
+      if (kp.score > 0.3) {
+        poseCtx.beginPath();
+        poseCtx.arc(kp.x * scaleX, kp.y * scaleY, 4, 0, Math.PI * 2);
+        poseCtx.fill();
+      }
+    });
+  }
+
+  async function poseLoop() {
+    if (!poseActive || !poseDetector) return;
+    try {
+      var poses = await poseDetector.estimatePoses(analysisVideo, { flipHorizontal: false });
+      if (poses && poses[0]) drawSkeleton(poses[0].keypoints);
+      else if (poseCtx) poseCtx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
+    } catch (e) { /* ignore a dropped frame */ }
+    poseLoopHandle = requestAnimationFrame(poseLoop);
+  }
+
+  function stopPoseOverlay() {
+    poseActive = false;
+    if (poseLoopHandle) cancelAnimationFrame(poseLoopHandle);
+    if (poseCtx && poseCanvas) poseCtx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
+    if (poseToggleBtn) { poseToggleBtn.classList.remove('active'); poseToggleBtn.textContent = '🦴 AI Pose Overlay'; }
+  }
+
+  if (poseToggleBtn) {
+    poseToggleBtn.addEventListener('click', async function () {
+      if (poseLoading) return;
+      if (poseActive) { stopPoseOverlay(); return; }
+      if (drawMode) { setDrawMode(false); clearStrokes(); }
+      if (analysisVideo.classList.contains('flipped')) {
+        analysisVideo.classList.remove('flipped');
+        if (flipToggleBtn) flipToggleBtn.classList.remove('active');
+      }
+      poseLoading = true;
+      poseToggleBtn.classList.add('loading');
+      poseToggleBtn.textContent = 'Loading model…';
+      try {
+        await ensurePoseDetector();
+        sizeDrawCanvas();
+        poseActive = true;
+        poseToggleBtn.classList.add('active');
+        poseToggleBtn.textContent = '🦴 Hide Pose Overlay';
+        poseLoop();
+      } catch (e) {
+        poseToggleBtn.textContent = "Couldn't load — check connection";
+        setTimeout(function () { poseToggleBtn.textContent = '🦴 AI Pose Overlay'; }, 2500);
+      }
+      poseLoading = false;
+      poseToggleBtn.classList.remove('loading');
+    });
+  }
+
+  if (flipToggleBtn) {
+    flipToggleBtn.addEventListener('click', function () { if (poseActive) stopPoseOverlay(); });
+  }
+
   function resetAnalysisPlayer() {
     if (!analysisVideo) return;
     analysisVideo.pause();
@@ -889,6 +1014,7 @@
     clearStrokes();
     analysisVideo.classList.remove('flipped');
     if (flipToggleBtn) flipToggleBtn.classList.remove('active');
+    stopPoseOverlay();
     noteButtons.forEach(function (btn) { btn.classList.remove('active-note'); });
   }
 
