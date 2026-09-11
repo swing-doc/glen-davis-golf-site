@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Swing Review Widget — Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* All classes are prefixed swr- (Swing Review) to avoid clashing with
+     whatever CSS a pro's own site already has, since this is meant to be
+     dropped into an existing page, not a standalone site. */
+  .swr-root{
+    --swr-ink:#1A1D21; --swr-text:#3C4149; --swr-dim:#6B7280;
+    --swr-line:#E4E7EB; --swr-line-strong:#D0D4DA;
+    --swr-bg:#FFFFFF; --swr-panel:#F7F8FA;
+    --swr-accent:#4F5AF0; --swr-accent-dark:#3D46C4;
+    --swr-green:#12805C; --swr-green-bg:#E7F6EF;
+    --swr-red:#C0392B;
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+    max-width:480px;margin:0 auto;color:var(--swr-text);font-size:15px;line-height:1.5;
+  }
+  .swr-root *{box-sizing:border-box;}
+  .swr-card{background:var(--swr-bg);border:1px solid var(--swr-line);border-radius:12px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,0.04);}
+  .swr-badge{display:inline-block;background:#FFF4E5;color:#9A5B00;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:20px;margin-bottom:14px;letter-spacing:0.02em;text-transform:uppercase;}
+  .swr-title{font-size:19px;font-weight:700;color:var(--swr-ink);margin:0 0 6px;}
+  .swr-sub{font-size:13.5px;color:var(--swr-dim);margin:0 0 20px;}
+  .swr-price-row{display:flex;align-items:baseline;justify-content:space-between;padding:16px 0;border-top:1px solid var(--swr-line);border-bottom:1px solid var(--swr-line);margin-bottom:20px;}
+  .swr-price-label{font-size:14px;color:var(--swr-text);}
+  .swr-price{font-size:26px;font-weight:700;color:var(--swr-ink);}
+
+  .swr-field{margin-bottom:14px;}
+  .swr-field label{display:block;font-size:12.5px;font-weight:600;color:var(--swr-text);margin-bottom:6px;}
+  .swr-field input{width:100%;padding:11px 13px;border:1px solid var(--swr-line-strong);border-radius:7px;font-size:14.5px;font-family:inherit;color:var(--swr-ink);background:var(--swr-bg);}
+  .swr-field input:focus{outline:none;border-color:var(--swr-accent);box-shadow:0 0 0 3px rgba(79,90,240,0.12);}
+  .swr-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+  .swr-card-fields{background:var(--swr-panel);border:1px solid var(--swr-line);border-radius:8px;padding:14px;margin-bottom:18px;}
+  .swr-card-icons{display:flex;gap:6px;margin-bottom:10px;}
+  .swr-card-icons span{font-size:11px;background:var(--swr-bg);border:1px solid var(--swr-line-strong);border-radius:3px;padding:2px 6px;color:var(--swr-dim);}
+
+  .swr-btn{display:block;width:100%;background:var(--swr-accent);color:#fff;border:none;border-radius:8px;padding:13px 20px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s;}
+  .swr-btn:hover{background:var(--swr-accent-dark);}
+  .swr-btn:disabled{opacity:0.6;cursor:wait;}
+  .swr-btn-secondary{background:var(--swr-panel);color:var(--swr-text);border:1px solid var(--swr-line-strong);}
+  .swr-btn-secondary:hover{background:var(--swr-line);}
+
+  .swr-spinner{width:15px;height:15px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;display:inline-block;animation:swr-spin .7s linear infinite;vertical-align:-2px;margin-right:8px;}
+  @keyframes swr-spin{to{transform:rotate(360deg);}}
+
+  .swr-note{font-size:12px;color:var(--swr-dim);text-align:center;margin-top:12px;}
+  .swr-lock{margin-right:4px;}
+
+  .swr-success-badge{display:flex;align-items:center;gap:8px;background:var(--swr-green-bg);color:var(--swr-green);font-size:13px;font-weight:600;padding:10px 14px;border-radius:8px;margin-bottom:18px;}
+
+  .swr-upload-box{border:2px dashed var(--swr-line-strong);border-radius:8px;padding:20px;text-align:center;cursor:pointer;margin-bottom:8px;transition:border-color .15s,background .15s;}
+  .swr-upload-box:hover{border-color:var(--swr-accent);background:rgba(79,90,240,0.03);}
+  .swr-upload-box input{display:none;}
+  .swr-upload-box .swr-icon{font-size:20px;margin-bottom:6px;}
+  .swr-upload-box .swr-hint{font-size:12px;color:var(--swr-dim);margin-top:3px;}
+  .swr-upload-label{font-size:13px;font-weight:600;color:var(--swr-ink);margin:18px 0 8px;}
+  .swr-file-chip{display:flex;align-items:center;gap:8px;background:var(--swr-green-bg);color:var(--swr-green);font-size:12.5px;padding:8px 12px;border-radius:6px;margin-top:8px;}
+
+  .swr-panel{display:none;}
+  .swr-panel.active{display:block;animation:swr-fade .25s ease;}
+  @keyframes swr-fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+  .swr-error{font-size:12.5px;color:var(--swr-red);margin-top:6px;display:none;}
+  .swr-error.show{display:block;}
+</style>
+</head>
+<body style="background:#EEF0F3;padding:48px 16px;">
+
+<div class="swr-root">
+  <div class="swr-card">
+
+    <!-- PANEL 1: Payment -->
+    <div class="swr-panel active" id="swrPanel1">
+      <div class="swr-badge">Test mode</div>
+      <div class="swr-title">Get Your Swing Reviewed</div>
+      <div class="swr-sub">Send in two angles of your swing and get personal video feedback within 48 hours.</div>
+
+      <div class="swr-price-row">
+        <div class="swr-price-label">Swing Review</div>
+        <div class="swr-price">$35.00</div>
+      </div>
+
+      <div class="swr-card-fields">
+        <div class="swr-card-icons"><span>VISA</span><span>MC</span><span>AMEX</span></div>
+        <div class="swr-field" style="margin-bottom:10px;">
+          <label>Card number</label>
+          <input type="text" id="swrCardNum" placeholder="4242 4242 4242 4242" maxlength="19">
+        </div>
+        <div class="swr-row2">
+          <div class="swr-field" style="margin-bottom:0;">
+            <label>Expiry</label>
+            <input type="text" id="swrCardExp" placeholder="MM / YY" maxlength="7">
+          </div>
+          <div class="swr-field" style="margin-bottom:0;">
+            <label>CVC</label>
+            <input type="text" id="swrCardCvc" placeholder="123" maxlength="4">
+          </div>
+        </div>
+      </div>
+
+      <button class="swr-btn" id="swrPayBtn" type="button">Process Test Payment — $35.00</button>
+      <div class="swr-error" id="swrPayError">Please fill in all card fields (any test values work — nothing is really charged).</div>
+      <div class="swr-note"><span class="swr-lock">🔒</span>Test mode — no real card is charged</div>
+    </div>
+
+    <!-- PANEL 2: Upload -->
+    <div class="swr-panel" id="swrPanel2">
+      <div class="swr-success-badge">✓ Payment successful — test mode</div>
+      <div class="swr-title">Upload Your Swing</div>
+      <div class="swr-sub">Two angles work best — down-the-line and face-on.</div>
+
+      <div class="swr-upload-label">Down-the-Line View</div>
+      <label class="swr-upload-box" id="swrBoxDTL" for="swrFileDTL">
+        <input type="file" id="swrFileDTL" accept="video/*">
+        <div class="swr-icon">🎥</div>
+        <div>Tap to choose a video</div>
+        <div class="swr-hint">Camera behind you, facing the target</div>
+      </label>
+      <div id="swrChipDTL"></div>
+
+      <div class="swr-upload-label">Face-On View</div>
+      <label class="swr-upload-box" id="swrBoxFO" for="swrFileFO">
+        <input type="file" id="swrFileFO" accept="video/*">
+        <div class="swr-icon">🎥</div>
+        <div>Tap to choose a video</div>
+        <div class="swr-hint">Camera facing you directly</div>
+      </label>
+      <div id="swrChipFO"></div>
+
+      <div class="swr-field" style="margin-top:20px;">
+        <label>Name</label>
+        <input type="text" id="swrName" placeholder="Your name">
+      </div>
+      <div class="swr-field">
+        <label>Email</label>
+        <input type="email" id="swrEmail" placeholder="you@email.com">
+      </div>
+      <div class="swr-field">
+        <label>Phone</label>
+        <input type="tel" id="swrPhone" placeholder="(555) 555-5555">
+      </div>
+
+      <button class="swr-btn" id="swrSubmitBtn" type="button">Submit My Swing</button>
+      <div class="swr-error" id="swrUploadError">Please add both videos and your email before submitting.</div>
+    </div>
+
+    <!-- PANEL 3: Done -->
+    <div class="swr-panel" id="swrPanel3">
+      <div class="swr-success-badge">✓ Submitted — test mode</div>
+      <div class="swr-title">You're All Set</div>
+      <div class="swr-sub">You'll get an email with your personal breakdown, usually within 48 hours.</div>
+      <button class="swr-btn swr-btn-secondary" id="swrRestartBtn" type="button">Restart Demo</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  (function () {
+    var panel1 = document.getElementById('swrPanel1');
+    var panel2 = document.getElementById('swrPanel2');
+    var panel3 = document.getElementById('swrPanel3');
+
+    function showPanel(el) {
+      [panel1, panel2, panel3].forEach(function (p) { p.classList.remove('active'); });
+      el.classList.add('active');
+      el.closest('.swr-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // ---- Card number auto-formatting (cosmetic only, test mode) ----
+    var cardNum = document.getElementById('swrCardNum');
+    cardNum.addEventListener('input', function () {
+      var digits = cardNum.value.replace(/\D/g, '').slice(0, 16);
+      cardNum.value = digits.replace(/(.{4})/g, '$1 ').trim();
+    });
+    var cardExp = document.getElementById('swrCardExp');
+    cardExp.addEventListener('input', function () {
+      var digits = cardExp.value.replace(/\D/g, '').slice(0, 4);
+      cardExp.value = digits.length > 2 ? digits.slice(0, 2) + ' / ' + digits.slice(2) : digits;
+    });
+
+    // ---- Panel 1: Pay ----
+    var payBtn = document.getElementById('swrPayBtn');
+    var payError = document.getElementById('swrPayError');
+    payBtn.addEventListener('click', function () {
+      var numOk = cardNum.value.replace(/\D/g, '').length >= 12;
+      var expOk = cardExp.value.replace(/\D/g, '').length === 4;
+      var cvcOk = document.getElementById('swrCardCvc').value.trim().length >= 3;
+      if (!numOk || !expOk || !cvcOk) {
+        payError.classList.add('show');
+        return;
+      }
+      payError.classList.remove('show');
+      payBtn.disabled = true;
+      payBtn.innerHTML = '<span class="swr-spinner"></span>Processing…';
+      setTimeout(function () {
+        payBtn.disabled = false;
+        payBtn.innerHTML = 'Process Test Payment — $35.00';
+        showPanel(panel2);
+      }, 1100);
+    });
+
+    // ---- Panel 2: Upload ----
+    function wireUpload(boxId, fileId, chipId) {
+      var box = document.getElementById(boxId);
+      var input = document.getElementById(fileId);
+      var chip = document.getElementById(chipId);
+      input.addEventListener('change', function () {
+        if (input.files && input.files[0]) {
+          var f = input.files[0];
+          chip.innerHTML = '<div class="swr-file-chip">✓ ' + f.name + '</div>';
+        }
+      });
+    }
+    wireUpload('swrBoxDTL', 'swrFileDTL', 'swrChipDTL');
+    wireUpload('swrBoxFO', 'swrFileFO', 'swrChipFO');
+
+    var submitBtn = document.getElementById('swrSubmitBtn');
+    var uploadError = document.getElementById('swrUploadError');
+    submitBtn.addEventListener('click', function () {
+      var hasDTL = document.getElementById('swrFileDTL').files.length > 0;
+      var hasFO = document.getElementById('swrFileFO').files.length > 0;
+      var email = document.getElementById('swrEmail').value.trim();
+      if (!hasDTL || !hasFO || !email) {
+        uploadError.classList.add('show');
+        return;
+      }
+      uploadError.classList.remove('show');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="swr-spinner"></span>Submitting…';
+      setTimeout(function () {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Submit My Swing';
+        showPanel(panel3);
+      }, 1100);
+    });
+
+    // ---- Panel 3: Restart ----
+    document.getElementById('swrRestartBtn').addEventListener('click', function () {
+      cardNum.value = ''; cardExp.value = ''; document.getElementById('swrCardCvc').value = '';
+      document.getElementById('swrFileDTL').value = ''; document.getElementById('swrFileFO').value = '';
+      document.getElementById('swrChipDTL').innerHTML = ''; document.getElementById('swrChipFO').innerHTML = '';
+      document.getElementById('swrName').value = ''; document.getElementById('swrEmail').value = ''; document.getElementById('swrPhone').value = '';
+      payError.classList.remove('show'); uploadError.classList.remove('show');
+      showPanel(panel1);
+    });
+  })();
+</script>
+
+</body>
+</html>
