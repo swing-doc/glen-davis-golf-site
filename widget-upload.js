@@ -29,8 +29,8 @@
  */
 
 // ====================== CONFIG -- fill these in ======================
-var APPS_SCRIPT_URL = 'PASTE_THE_PRO_APPS_SCRIPT_WEB_APP_URL_HERE';
-var PAY_LINK_URL = 'PASTE_THE_PRO_STRIPE_PAYMENT_LINK_HERE';
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyHUgeRd39Zr91-1NP_EcydAaRbn8IZEHACTMH3wd7QhI2X1G3j1KH2HYn6tXCoVbI/exec';
+var PAY_LINK_URL = 'https://buy.stripe.com/test_8x24gs1oidEU3EZ1hRg3600';
 var MAX_FILE_MB = 40; // keep uploads reasonable -- base64 adds ~33% overhead
 // ======================================================================
 
@@ -43,9 +43,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var paymentReference = getPaymentReferenceFromUrl_();
 
   if (payBtn && PAY_LINK_URL.indexOf('PASTE_') !== 0) {
-    payBtn.addEventListener('click', function () {
-      window.location.href = PAY_LINK_URL;
-    });
+    payBtn.href = PAY_LINK_URL;
   }
 
   // If Stripe just redirected back here with a session id, skip straight
