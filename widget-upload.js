@@ -29,7 +29,7 @@
  */
 
 // ====================== CONFIG -- fill these in ======================
-var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyHUgeRd39Zr91-1NP_EcydAaRbn8IZEHACTMH3wd7QhI2X1G3j1KH2HYn6tXCoVbI/exec';
+var APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzXeuGQuR0KPa4cU7oDmA9vOwnL_eCE3PIkl9NT5HFPxRrr43WbNKLeAIluMV-Lut3E/exec';
 var PAY_LINK_URL = 'https://buy.stripe.com/test_8x24gs1oidEU3EZ1hRg3600';
 var MAX_FILE_MB = 40; // keep uploads reasonable -- base64 adds ~33% overhead
 // ======================================================================
