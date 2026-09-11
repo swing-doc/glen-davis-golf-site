@@ -90,6 +90,29 @@
   .transcript p:last-child{margin-bottom:0;}
   .transcript .ts{color:var(--gold-deep);font-weight:600;margin-right:6px;}
 
+  .feature-tag{display:inline-block;background:rgba(169,132,60,0.14);color:var(--gold-deep);font-size:11.5px;padding:4px 11px;border-radius:12px;margin-bottom:16px;letter-spacing:0.03em;text-transform:uppercase;font-weight:600;}
+  .analysis-block{margin-top:36px;background:var(--panel);border:1px solid var(--rule-strong);border-radius:4px;padding:30px;}
+  .analysis-block h4{font-size:20px;margin-bottom:8px;}
+  .analysis-block>p{margin-bottom:22px;max-width:60ch;}
+  .analysis-video-wrap{position:relative;background:#000;border-radius:4px;overflow:hidden;aspect-ratio:16/9;max-width:480px;}
+  .analysis-video-wrap video{width:100%;height:100%;object-fit:contain;background:#000;display:block;}
+  .analysis-controls{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap;max-width:480px;}
+  .ctrl-btn{background:var(--cream);border:1px solid var(--rule-strong);border-radius:3px;padding:9px 13px;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;color:var(--ink);display:inline-flex;align-items:center;gap:6px;}
+  .ctrl-btn:hover{border-color:var(--gold);}
+  .speed-group{display:flex;gap:3px;background:var(--cream);border:1px solid var(--rule-strong);border-radius:3px;padding:3px;}
+  .speed-btn{background:transparent;border:none;padding:7px 11px;font-size:12.5px;border-radius:2px;cursor:pointer;color:var(--text-dim);font-family:'Inter',sans-serif;}
+  .speed-btn.active{background:var(--forest);color:var(--cream);}
+  .scrub-row{display:flex;align-items:center;gap:12px;margin-top:16px;max-width:480px;}
+  .scrub-row input[type=range]{flex:1;accent-color:var(--gold);}
+  .scrub-time{font-size:12px;color:var(--text-dim);min-width:78px;text-align:right;font-variant-numeric:tabular-nums;}
+  .notes-list{margin-top:26px;display:flex;flex-direction:column;gap:8px;max-width:560px;}
+  .note-btn{display:flex;gap:12px;align-items:flex-start;text-align:left;width:100%;background:var(--cream);border:1px solid transparent;border-left:3px solid var(--gold);border-radius:3px;padding:12px 14px;cursor:pointer;font-family:'Inter',sans-serif;transition:background .15s,border-color .15s;}
+  .note-btn:hover{background:rgba(169,132,60,0.09);}
+  .note-btn.active-note{border-color:var(--gold);background:rgba(169,132,60,0.13);}
+  .note-btn .ts{color:var(--gold-deep);font-weight:600;font-size:12.5px;min-width:34px;padding-top:1px;}
+  .note-btn .note-text{font-size:14px;color:var(--text);}
+  @media(max-width:760px){.analysis-video-wrap,.analysis-controls,.scrub-row,.notes-list{max-width:100%;}}
+
   .btn-secondary{display:inline-block;background:transparent;color:var(--gold-deep);border:1px solid var(--rule-strong);padding:12px 22px;font-size:13.5px;border-radius:2px;cursor:pointer;font-family:'Inter',sans-serif;margin-top:18px;}
   .btn-secondary:hover{border-color:var(--gold);}
 
@@ -243,22 +266,48 @@
           </div>
 
           <div class="review-card">
-            <div class="review-thumb" id="reviewThumb">
-              <img src="images/driving-range.jpg" alt="Sample swing review thumbnail" id="feedbackThumbImg">
-              <video id="feedbackVideo" muted playsinline style="display:none;"></video>
-              <div class="play"><span>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7-11-7z" fill="#152118"/></svg>
-              </span></div>
+            <div class="review-thumb" style="cursor:default;">
+              <img src="images/driving-range.jpg" alt="Sample swing review thumbnail">
             </div>
             <div class="review-body">
               <h4>Your Swing Breakdown — from Glen</h4>
-              <p style="margin-bottom:0;">A short video of Glen talking through your swing, pointing things out on screen as it plays.</p>
-              <div class="transcript" id="transcript" style="display:none;">
-                <p><span class="ts">0:03</span>Nice tempo on the takeaway — that part looks great.</p>
-                <p><span class="ts">0:11</span>Right here, watch how the arms pull in toward the body instead of extending out.</p>
-                <p><span class="ts">0:19</span>That's what's costing you distance and causing the slice. Let's fix it with a drill.</p>
-              </div>
+              <p style="margin-bottom:0;">Glen studies your swing frame-by-frame using the same tools shown below, then sends back a personal video walkthrough.</p>
             </div>
+          </div>
+        </div>
+
+        <div class="analysis-block">
+          <div class="feature-tag">New — Swing Analysis Tools</div>
+          <h4>See how Glen breaks down a swing</h4>
+          <p>Frame-by-frame stepping, slow motion, and notes tied to the exact moment they happen — this is what a real breakdown looks like, using an actual clip of Glen's swing.</p>
+
+          <div class="analysis-video-wrap">
+            <video id="analysisVideo" src="images/sample-swing.mp4" playsinline muted preload="metadata"></video>
+          </div>
+
+          <div class="analysis-controls">
+            <button class="ctrl-btn" id="analysisPlayBtn" type="button">
+              <svg id="playIconSvg" width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7-11-7z" fill="#152118"/></svg>
+              <span id="playBtnLabel">Play</span>
+            </button>
+            <button class="ctrl-btn" id="stepBackBtn" type="button">&#10094; Frame</button>
+            <button class="ctrl-btn" id="stepFwdBtn" type="button">Frame &#10095;</button>
+            <div class="speed-group">
+              <button class="speed-btn" data-speed="0.25" type="button">0.25x</button>
+              <button class="speed-btn" data-speed="0.5" type="button">0.5x</button>
+              <button class="speed-btn active" data-speed="1" type="button">1x</button>
+            </div>
+          </div>
+
+          <div class="scrub-row">
+            <input type="range" id="scrubBar" min="0" max="1" step="0.01" value="0">
+            <span class="scrub-time" id="scrubTime">0.0s / 0.0s</span>
+          </div>
+
+          <div class="notes-list" id="notesList">
+            <button class="note-btn" type="button" data-t="0.0"><span class="ts">0.0s</span><span class="note-text">Setup — good posture and ball position here.</span></button>
+            <button class="note-btn" type="button" data-t="0.6"><span class="ts">0.6s</span><span class="note-text">Watch the arms here — this is the moment they start pulling in toward the body instead of extending out.</span></button>
+            <button class="note-btn" type="button" data-t="1.1"><span class="ts">1.1s</span><span class="note-text">Impact — this is where that lost extension costs the most distance and accuracy.</span></button>
           </div>
         </div>
 
@@ -319,14 +368,22 @@
   var videoInput = document.getElementById('videoInput');
   var uploadBox = document.getElementById('uploadBox');
   var filePreviewSlot = document.getElementById('filePreviewSlot');
-  var reviewThumb = document.getElementById('reviewThumb');
-  var transcript = document.getElementById('transcript');
   var yourSwingThumb = document.getElementById('yourSwingThumb');
   var yourSwingVideo = document.getElementById('yourSwingVideo');
   var yourSwingSampleImg = document.getElementById('yourSwingSampleImg');
   var yourSwingCaption = document.getElementById('yourSwingCaption');
-  var feedbackThumbImg = document.getElementById('feedbackThumbImg');
-  var feedbackVideo = document.getElementById('feedbackVideo');
+  var analysisVideo = document.getElementById('analysisVideo');
+  var analysisPlayBtn = document.getElementById('analysisPlayBtn');
+  var playIconSvg = document.getElementById('playIconSvg');
+  var playBtnLabel = document.getElementById('playBtnLabel');
+  var stepBackBtn = document.getElementById('stepBackBtn');
+  var stepFwdBtn = document.getElementById('stepFwdBtn');
+  var speedBtns = document.querySelectorAll('.speed-btn');
+  var scrubBar = document.getElementById('scrubBar');
+  var scrubTime = document.getElementById('scrubTime');
+  var notesList = document.getElementById('notesList');
+  var noteButtons = notesList ? notesList.querySelectorAll('.note-btn') : [];
+  var FRAME_STEP = 1 / 25;
   var chosenObjectUrl = null;
   var chosenFileName = '';
   var chosenIsVideo = false;
@@ -400,6 +457,7 @@
     yourSwingSampleImg.src = 'images/sample-feedback-swing.gif';
     yourSwingSampleImg.style.display = 'block';
     yourSwingCaption.textContent = "This is the swing you just submitted.";
+    resetAnalysisPlayer();
   }
 
   if (submitBtn) {
@@ -428,35 +486,109 @@
     });
   }
 
-  if (reviewThumb) {
-    reviewThumb.addEventListener('click', function () {
-      if (feedbackVideo.getAttribute('src')) {
-        feedbackThumbImg.style.display = 'none';
-        feedbackVideo.style.display = 'block';
-        feedbackVideo.controls = true;
-        feedbackVideo.play();
-        reviewThumb.classList.add('playing');
-      } else {
-        transcript.style.display = transcript.style.display === 'block' ? 'none' : 'block';
-      }
+  function formatT(s) { return s.toFixed(1) + 's'; }
+
+  function setPlayLabel(isPlaying) {
+    playBtnLabel.textContent = isPlaying ? 'Pause' : 'Play';
+    playIconSvg.innerHTML = isPlaying
+      ? '<rect x="6" y="5" width="4" height="14" fill="#152118"/><rect x="14" y="5" width="4" height="14" fill="#152118"/>'
+      : '<path d="M8 5v14l11-7-11-7z" fill="#152118"/>';
+  }
+
+  function highlightActiveNote() {
+    if (!analysisVideo) return;
+    var t = analysisVideo.currentTime;
+    var closest = null, closestDiff = Infinity;
+    noteButtons.forEach(function (btn) {
+      var bt = parseFloat(btn.getAttribute('data-t'));
+      var diff = Math.abs(t - bt);
+      if (t >= bt - 0.05 && diff < closestDiff) { closestDiff = diff; closest = btn; }
     });
+    noteButtons.forEach(function (btn) { btn.classList.toggle('active-note', btn === closest); });
+  }
+
+  function updateScrubUI() {
+    if (!analysisVideo || !analysisVideo.duration) return;
+    scrubBar.max = analysisVideo.duration;
+    scrubBar.value = analysisVideo.currentTime;
+    scrubTime.textContent = formatT(analysisVideo.currentTime) + ' / ' + formatT(analysisVideo.duration);
+  }
+
+  if (analysisVideo) {
+    analysisVideo.addEventListener('loadedmetadata', updateScrubUI);
+    analysisVideo.addEventListener('timeupdate', function () { updateScrubUI(); highlightActiveNote(); });
+    analysisVideo.addEventListener('play', function () { setPlayLabel(true); });
+    analysisVideo.addEventListener('pause', function () { setPlayLabel(false); });
+    analysisVideo.addEventListener('ended', function () { setPlayLabel(false); });
+  }
+
+  if (analysisPlayBtn) {
+    analysisPlayBtn.addEventListener('click', function () {
+      if (analysisVideo.paused) analysisVideo.play(); else analysisVideo.pause();
+    });
+  }
+
+  if (stepBackBtn) {
+    stepBackBtn.addEventListener('click', function () {
+      analysisVideo.pause();
+      analysisVideo.currentTime = Math.max(0, analysisVideo.currentTime - FRAME_STEP);
+    });
+  }
+  if (stepFwdBtn) {
+    stepFwdBtn.addEventListener('click', function () {
+      analysisVideo.pause();
+      var dur = analysisVideo.duration || 0;
+      analysisVideo.currentTime = Math.min(dur, analysisVideo.currentTime + FRAME_STEP);
+    });
+  }
+
+  speedBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var speed = parseFloat(btn.getAttribute('data-speed'));
+      analysisVideo.playbackRate = speed;
+      speedBtns.forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+    });
+  });
+
+  if (scrubBar) {
+    scrubBar.addEventListener('input', function () {
+      analysisVideo.pause();
+      analysisVideo.currentTime = parseFloat(scrubBar.value);
+    });
+  }
+
+  noteButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var t = parseFloat(btn.getAttribute('data-t'));
+      analysisVideo.currentTime = t;
+      analysisVideo.play();
+    });
+  });
+
+  function resetAnalysisPlayer() {
+    if (!analysisVideo) return;
+    analysisVideo.pause();
+    analysisVideo.currentTime = 0;
+    analysisVideo.playbackRate = 1;
+    speedBtns.forEach(function (b) { b.classList.remove('active'); });
+    var oneX = document.querySelector('.speed-btn[data-speed="1"]');
+    if (oneX) oneX.classList.add('active');
+    setPlayLabel(false);
+    noteButtons.forEach(function (btn) { btn.classList.remove('active-note'); });
   }
 
   if (restartBtn) {
     restartBtn.addEventListener('click', function () {
       filePreviewSlot.innerHTML = '';
       videoInput.value = '';
-      transcript.style.display = 'none';
       document.getElementById('dName').value = '';
       document.getElementById('dEmail').value = '';
       yourSwingVideo.pause();
       yourSwingVideo.removeAttribute('src');
       yourSwingVideo.controls = false;
       yourSwingThumb.classList.remove('playing');
-      feedbackVideo.pause();
-      feedbackVideo.style.display = 'none';
-      feedbackThumbImg.style.display = 'block';
-      reviewThumb.classList.remove('playing');
+      resetAnalysisPlayer();
       showPanel(1);
     });
   }
