@@ -323,12 +323,14 @@
             <button class="ctrl-btn" id="drawToggleBtn" type="button">✏️ Draw on frame</button>
             <button class="ctrl-btn" id="flipToggleBtn" type="button">&#8646; Flip</button>
             <button class="ctrl-btn" id="poseToggleBtn" type="button">🦴 AI Pose Overlay</button>
+            <button class="ctrl-btn" id="exportFrameBtn" type="button">📸 Save Frame</button>
           </div>
 
           <div class="draw-toolbar" id="drawToolbar" style="display:none;">
             <div class="tool-group">
               <button class="tool-btn active" data-tool="line" type="button">Line</button>
               <button class="tool-btn" data-tool="freehand" type="button">Freehand</button>
+              <button class="tool-btn" data-tool="angle" type="button">Angle</button>
             </div>
             <div class="color-group">
               <button class="color-swatch active" data-color="#F4C542" style="background:#F4C542" type="button" aria-label="Gold"></button>
@@ -337,7 +339,7 @@
               <button class="color-swatch" data-color="#FFFFFF" style="background:#FFFFFF;border:1px solid rgba(21,33,24,0.3);" type="button" aria-label="White"></button>
             </div>
             <button class="ctrl-btn" id="clearDrawBtn" type="button">Clear</button>
-            <span class="draw-hint">Pause on a frame, then drag to draw. Play or step to a new frame clears it.</span>
+            <span class="draw-hint">Line/Freehand: drag to draw. Angle: click three points (end, vertex, end) to measure a degree. Play or step to a new frame clears it.</span>
           </div>
 
           <div class="scrub-row">
@@ -473,6 +475,7 @@
   var toolBtns = document.querySelectorAll('.tool-btn');
   var colorSwatches = document.querySelectorAll('.color-swatch');
   var clearDrawBtn = document.getElementById('clearDrawBtn');
+  var exportFrameBtn = document.getElementById('exportFrameBtn');
   var FRAME_STEP = 1 / 25;
   var chosenObjectUrl = null;
   var chosenFileName = '';
@@ -483,6 +486,7 @@
   var strokes = [];
   var activeStroke = null;
   var isDrawing = false;
+  var anglePoints = [];
 
   function showPanel(n) {
     [panel1, panel2, panel3].forEach(function (p) { p.classList.remove('active'); });
@@ -706,6 +710,22 @@
     drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
     strokes.forEach(paintStroke);
     if (activeStroke) paintStroke(activeStroke);
+    if (currentTool === 'angle' && anglePoints.length > 0) {
+      drawCtx.fillStyle = currentColor;
+      anglePoints.forEach(function (p) {
+        drawCtx.beginPath();
+        drawCtx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+        drawCtx.fill();
+      });
+      if (anglePoints.length === 2) {
+        drawCtx.strokeStyle = currentColor;
+        drawCtx.lineWidth = 3;
+        drawCtx.beginPath();
+        drawCtx.moveTo(anglePoints[0].x, anglePoints[0].y);
+        drawCtx.lineTo(anglePoints[1].x, anglePoints[1].y);
+        drawCtx.stroke();
+      }
+    }
   }
 
   function paintStroke(s) {
@@ -718,6 +738,24 @@
       drawCtx.moveTo(s.x1, s.y1);
       drawCtx.lineTo(s.x2, s.y2);
       drawCtx.stroke();
+    } else if (s.tool === 'angle') {
+      var p0 = s.points[0], v = s.points[1], p2 = s.points[2];
+      drawCtx.beginPath(); drawCtx.moveTo(v.x, v.y); drawCtx.lineTo(p0.x, p0.y); drawCtx.stroke();
+      drawCtx.beginPath(); drawCtx.moveTo(v.x, v.y); drawCtx.lineTo(p2.x, p2.y); drawCtx.stroke();
+      drawCtx.fillStyle = s.color;
+      drawCtx.beginPath(); drawCtx.arc(v.x, v.y, 4, 0, Math.PI * 2); drawCtx.fill();
+      var v1 = { x: p0.x - v.x, y: p0.y - v.y }, v2 = { x: p2.x - v.x, y: p2.y - v.y };
+      var m1 = Math.hypot(v1.x, v1.y), m2 = Math.hypot(v2.x, v2.y);
+      var angleDeg = 0;
+      if (m1 > 0 && m2 > 0) {
+        var cosA = Math.max(-1, Math.min(1, (v1.x * v2.x + v1.y * v2.y) / (m1 * m2)));
+        angleDeg = Math.round(Math.acos(cosA) * 180 / Math.PI);
+      }
+      drawCtx.font = 'bold 15px Inter, sans-serif';
+      drawCtx.fillStyle = '#152118';
+      drawCtx.fillText(angleDeg + '°', v.x + 10, v.y - 10);
+      drawCtx.fillStyle = s.color;
+      drawCtx.fillText(angleDeg + '°', v.x + 9, v.y - 11);
     } else {
       if (s.points.length < 2) return;
       drawCtx.beginPath();
@@ -730,6 +768,7 @@
   function clearStrokes() {
     strokes = [];
     activeStroke = null;
+    anglePoints = [];
     if (drawCtx) drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
   }
 
@@ -740,6 +779,7 @@
 
   function setDrawMode(on) {
     drawMode = on;
+    anglePoints = [];
     if (drawToggleBtn) drawToggleBtn.classList.toggle('active', on);
     if (drawToolbar) drawToolbar.style.display = on ? 'flex' : 'none';
     if (drawCanvas) drawCanvas.classList.toggle('drawing-active', on);
@@ -761,8 +801,17 @@
   if (drawCanvas) {
     drawCanvas.addEventListener('pointerdown', function (evt) {
       if (!drawMode) return;
-      isDrawing = true;
       var p = getCanvasPoint(evt);
+      if (currentTool === 'angle') {
+        anglePoints.push(p);
+        if (anglePoints.length === 3) {
+          strokes.push({ tool: 'angle', color: currentColor, points: anglePoints.slice() });
+          anglePoints = [];
+        }
+        redrawStrokes();
+        return;
+      }
+      isDrawing = true;
       if (currentTool === 'line') {
         activeStroke = { tool: 'line', color: currentColor, x1: p.x, y1: p.y, x2: p.x, y2: p.y };
       } else {
@@ -795,6 +844,8 @@
       currentTool = btn.getAttribute('data-tool');
       toolBtns.forEach(function (b) { b.classList.remove('active'); });
       btn.classList.add('active');
+      anglePoints = [];
+      redrawStrokes();
     });
   });
 
@@ -808,6 +859,30 @@
 
   if (clearDrawBtn) {
     clearDrawBtn.addEventListener('click', clearStrokes);
+  }
+
+  if (exportFrameBtn) {
+    exportFrameBtn.addEventListener('click', function () {
+      var vw = analysisVideo.videoWidth, vh = analysisVideo.videoHeight;
+      if (!vw || !vh) return;
+      var out = document.createElement('canvas');
+      out.width = vw;
+      out.height = vh;
+      var octx = out.getContext('2d');
+      octx.drawImage(analysisVideo, 0, 0, vw, vh);
+      if (drawCanvas && drawCanvas.width && drawCanvas.height) {
+        octx.drawImage(drawCanvas, 0, 0, drawCanvas.width, drawCanvas.height, 0, 0, vw, vh);
+      }
+      if (poseActive && poseCanvas && poseCanvas.width && poseCanvas.height) {
+        octx.drawImage(poseCanvas, 0, 0, poseCanvas.width, poseCanvas.height, 0, 0, vw, vh);
+      }
+      var link = document.createElement('a');
+      link.download = 'glen-davis-swing-breakdown.png';
+      link.href = out.toDataURL('image/png');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
   }
 
   if (analysisVideo) {
