@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Swing Review Tool</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1A1D21; --text:#3C4149; --dim:#6B7280;
+    --line:#E4E7EB; --line-strong:#D0D4DA;
+    --bg:#F5F6F8; --panel:#FFFFFF;
+    --accent:#4F5AF0; --accent-dark:#3D46C4;
+    --mark:#E0A526; --mark-dark:#B8860F;
+    --green:#12805C; --green-bg:#E7F6EF;
+    --red:#C0392B;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:15px;line-height:1.6;}
+  h1,h2,h3,h4{margin:0;color:var(--ink);font-weight:700;}
+  p{margin:0 0 1em;color:var(--dim);}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px;}
+
+  header{background:var(--panel);border-bottom:1px solid var(--line);padding:20px 0;}
+  header .wrap{display:flex;align-items:center;justify-content:space-between;}
+  .brand{font-size:17px;font-weight:700;color:var(--ink);}
+  .brand span{color:var(--accent);}
+
+  section{padding:32px 0;}
+  .panel-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:28px;}
+  .panel-card + .panel-card{margin-top:20px;}
+
+  .field{margin-bottom:16px;}
+  .field label{display:block;font-size:12.5px;font-weight:600;color:var(--text);margin-bottom:6px;}
+  .field input{width:100%;padding:11px 13px;border:1px solid var(--line-strong);border-radius:7px;font-size:14.5px;font-family:inherit;}
+  .field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,90,240,0.12);}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+  @media(max-width:700px){.row3{grid-template-columns:1fr;}}
+
+  .upload-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px;}
+  @media(max-width:700px){.upload-row{grid-template-columns:1fr;}}
+  .upload-box{border:2px dashed var(--line-strong);border-radius:8px;padding:26px 16px;text-align:center;cursor:pointer;}
+  .upload-box:hover{border-color:var(--accent);background:rgba(79,90,240,0.03);}
+  .upload-box input{display:none;}
+  .upload-box .icon{font-size:22px;margin-bottom:6px;}
+  .upload-box .hint{font-size:12px;color:var(--dim);margin-top:3px;}
+  .file-chip{display:flex;align-items:center;gap:8px;background:var(--green-bg);color:var(--green);font-size:12.5px;padding:8px 12px;border-radius:6px;margin-top:8px;}
+
+  .btn{display:inline-block;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:13px 22px;font-size:14.5px;font-weight:600;cursor:pointer;font-family:inherit;}
+  .btn:hover{background:var(--accent-dark);}
+  .btn:disabled{opacity:0.5;cursor:not-allowed;}
+  .btn-secondary{background:var(--bg);color:var(--text);border:1px solid var(--line-strong);}
+  .btn-secondary:hover{background:var(--line);}
+  .error-msg{font-size:12.5px;color:var(--red);margin-top:10px;display:none;}
+  .error-msg.show{display:block;}
+
+  #reviewArea{display:none;}
+  #reviewArea.active{display:block;}
+
+  .view-tabs{display:flex;gap:4px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:4px;margin-bottom:20px;width:fit-content;}
+  .view-tab{background:transparent;border:none;padding:9px 18px;font-size:13.5px;font-weight:600;border-radius:6px;cursor:pointer;color:var(--dim);font-family:inherit;}
+  .view-tab.active{background:var(--panel);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,0.06);}
+
+  .analysis-video-wrap{position:relative;background:#000;border-radius:8px;overflow:hidden;max-width:520px;aspect-ratio:16/9;}
+  .analysis-video-wrap video{width:100%;height:100%;object-fit:contain;background:#000;display:block;transition:transform .15s;}
+  .analysis-video-wrap video.flipped{transform:scaleX(-1);}
+  #poseCanvas{position:absolute;top:0;left:0;pointer-events:none;}
+  #drawCanvas{position:absolute;top:0;left:0;pointer-events:none;touch-action:none;}
+  #drawCanvas.drawing-active{pointer-events:auto;cursor:crosshair;}
+  .guide-line{position:absolute;z-index:6;touch-action:none;}
+  .guide-v{top:0;bottom:0;width:16px;margin-left:-8px;cursor:ew-resize;display:flex;justify-content:center;}
+  .guide-v i{display:block;width:2px;height:100%;background:repeating-linear-gradient(to bottom,var(--mark) 0 6px,transparent 6px 12px);pointer-events:none;}
+  .guide-h{left:0;right:0;height:16px;margin-top:-8px;cursor:ns-resize;display:flex;align-items:center;}
+  .guide-h i{display:block;height:2px;width:100%;background:repeating-linear-gradient(to right,var(--mark) 0 6px,transparent 6px 12px);pointer-events:none;}
+  .guide-line.dragging i{background-color:var(--green);}
+
+  .controls{display:flex;align-items:center;gap:8px;margin-top:16px;flex-wrap:wrap;max-width:520px;}
+  .ctrl-btn{background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;padding:9px 13px;font-size:12.5px;cursor:pointer;font-family:inherit;color:var(--ink);display:inline-flex;align-items:center;gap:6px;}
+  .ctrl-btn:hover{border-color:var(--accent);}
+  .ctrl-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+  .speed-group{display:flex;gap:3px;background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;padding:3px;}
+  .speed-btn{background:transparent;border:none;padding:7px 10px;font-size:12px;border-radius:4px;cursor:pointer;color:var(--dim);font-family:inherit;}
+  .speed-btn.active{background:var(--accent);color:#fff;}
+  .scrub-row{display:flex;align-items:center;gap:12px;margin-top:14px;max-width:520px;}
+  .scrub-row input[type=range]{flex:1;accent-color:var(--mark);}
+  .scrub-time{font-size:12px;color:var(--dim);min-width:78px;text-align:right;font-variant-numeric:tabular-nums;}
+
+  .tool-group{display:flex;gap:3px;background:var(--panel);border:1px solid var(--line-strong);border-radius:6px;padding:3px;}
+  .tool-btn{background:transparent;border:none;padding:7px 11px;font-size:12px;border-radius:4px;cursor:pointer;color:var(--dim);font-family:inherit;}
+  .tool-btn.active{background:var(--accent);color:#fff;}
+  .color-group{display:flex;gap:6px;}
+  .color-swatch{width:20px;height:20px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;}
+  .color-swatch.active{border-color:var(--ink);}
+  .draw-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;max-width:520px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 14px;}
+  .draw-hint{font-size:11.5px;color:var(--dim);flex-basis:100%;}
+
+  .notes-list{margin-top:20px;display:flex;flex-direction:column;gap:8px;max-width:560px;}
+  .note-item{display:flex;gap:10px;align-items:flex-start;background:var(--bg);border-left:3px solid var(--mark);border-radius:4px;padding:10px 14px;}
+  .note-item button.seek-note{background:none;border:1px solid var(--line-strong);border-radius:50%;width:26px;height:26px;cursor:pointer;flex-shrink:0;}
+  .note-item .ts{color:var(--mark-dark);font-weight:600;font-size:12px;min-width:34px;}
+  .note-item .note-text{font-size:13.5px;flex:1;}
+  .note-item .remove-note{border:none;background:none;color:var(--dim);font-size:16px;cursor:pointer;}
+  .add-note-row{display:flex;gap:8px;margin-top:14px;max-width:560px;}
+  .add-note-row input{flex:1;padding:10px 12px;border:1px solid var(--line-strong);border-radius:6px;font-family:inherit;font-size:13.5px;}
+
+  .voice-note-tool{margin-top:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .voice-status{font-size:12.5px;color:var(--dim);}
+  .voice-status.recording{color:var(--red);font-weight:600;}
+  .ctrl-btn#voiceRecordBtn.active{background:var(--red);color:#fff;border-color:var(--red);}
+  .voice-note-item{display:flex;align-items:center;gap:10px;background:var(--bg);border-left:3px solid var(--accent);border-radius:4px;padding:9px 14px;margin-top:8px;max-width:560px;}
+  .voice-note-item .ts{color:var(--accent-dark);font-weight:600;font-size:12px;min-width:34px;}
+  .voice-play-btn{background:var(--panel);border:1px solid var(--line-strong);border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:11px;}
+  .voice-note-label{font-size:12.5px;color:var(--dim);flex:1;}
+  .remove-voice{border:none;background:none;color:var(--dim);font-size:17px;cursor:pointer;}
+
+  .compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:820px;}
+  .compare-col{display:flex;flex-direction:column;gap:8px;}
+  .compare-label{font-size:12px;color:var(--mark-dark);text-transform:uppercase;letter-spacing:0.03em;font-weight:700;display:flex;justify-content:space-between;align-items:center;}
+  .compare-wrap{max-width:none;aspect-ratio:16/9;}
+  @media(max-width:700px){.compare-grid{grid-template-columns:1fr;}}
+
+  .send-back-block{margin-top:18px;padding-top:18px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .student-contact{font-size:13px;color:var(--dim);flex-basis:100%;}
+  .student-contact strong{color:var(--ink);font-weight:600;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="brand">Swing<span>Review</span> Tool</div>
+    <div style="font-size:12.5px;color:var(--dim);">For coaches — private use</div>
+  </div>
+</header>
+
+<section>
+  <div class="wrap" style="max-width:820px;">
+
+    <!-- STEP 1: Load videos -->
+    <div class="panel-card" id="loadPanel">
+      <h3 style="margin-bottom:6px;">Load a student's swing</h3>
+      <p style="margin-bottom:20px;">Choose the two video files from your computer (downloaded from your Drive submissions folder). Nothing is uploaded anywhere — this all runs locally in your browser.</p>
+
+      <div class="upload-row">
+        <div>
+          <label class="upload-box" for="fileDTL">
+            <input type="file" id="fileDTL" accept="video/*">
+            <div class="icon">🎥</div>
+            <div>Down-the-Line video</div>
+            <div class="hint">Tap to choose a file</div>
+          </label>
+          <div id="chipDTL"></div>
+        </div>
+        <div>
+          <label class="upload-box" for="fileFO">
+            <input type="file" id="fileFO" accept="video/*">
+            <div class="icon">🎥</div>
+            <div>Face-On video</div>
+            <div class="hint">Tap to choose a file</div>
+          </label>
+          <div id="chipFO"></div>
+        </div>
+      </div>
+
+      <div class="row3">
+        <div class="field"><label for="stName">Student name</label><input id="stName" type="text" placeholder="From your Sheet"></div>
+        <div class="field"><label for="stEmail">Email</label><input id="stEmail" type="email" placeholder="From your Sheet"></div>
+        <div class="field"><label for="stPhone">Phone</label><input id="stPhone" type="tel" placeholder="From your Sheet"></div>
+      </div>
+
+      <button class="btn" id="startReviewBtn" type="button">Start Review</button>
+      <div class="error-msg" id="loadError">Please choose both videos first.</div>
+    </div>
+
+    <!-- STEP 2: Review area -->
+    <div id="reviewArea">
+
+      <div class="panel-card">
+        <h4 style="margin-bottom:14px;">Swing Analysis</h4>
+
+        <div class="view-tabs">
+          <button class="view-tab active" id="tabDTL" type="button">Down-the-Line</button>
+          <button class="view-tab" id="tabFO" type="button">Face-On</button>
+        </div>
+
+        <div class="analysis-video-wrap" id="analysisVideoWrap">
+          <video id="analysisVideo" playsinline muted preload="metadata"></video>
+          <canvas id="poseCanvas"></canvas>
+          <canvas id="drawCanvas"></canvas>
+          <div class="guide-line guide-v" id="guideV" style="display:none;left:50%;"><i></i></div>
+          <div class="guide-line guide-h" id="guideH" style="display:none;top:70%;"><i></i></div>
+        </div>
+
+        <div class="controls">
+          <button class="ctrl-btn" id="analysisPlayBtn" type="button">
+            <svg id="playIconSvg" width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7-11-7z" fill="#1A1D21"/></svg>
+            <span id="playBtnLabel">Play</span>
+          </button>
+          <button class="ctrl-btn" id="stepBackBtn" type="button">&#10094; Frame</button>
+          <button class="ctrl-btn" id="stepFwdBtn" type="button">Frame &#10095;</button>
+          <div class="speed-group">
+            <button class="speed-btn" data-speed="0.25" type="button">0.25x</button>
+            <button class="speed-btn" data-speed="0.5" type="button">0.5x</button>
+            <button class="speed-btn active" data-speed="1" type="button">1x</button>
+          </div>
+          <button class="ctrl-btn" id="drawToggleBtn" type="button">✏️ Draw</button>
+          <button class="ctrl-btn" id="flipToggleBtn" type="button">&#8646; Flip</button>
+          <button class="ctrl-btn" id="poseToggleBtn" type="button">🦴 AI Pose</button>
+          <button class="ctrl-btn" id="guideToggleBtn" type="button">📐 Guides</button>
+          <button class="ctrl-btn" id="exportFrameBtn" type="button">📸 Save Frame</button>
+        </div>
+
+        <div class="draw-toolbar" id="drawToolbar" style="display:none;">
+          <div class="tool-group">
+            <button class="tool-btn active" data-tool="line" type="button">Line</button>
+            <button class="tool-btn" data-tool="freehand" type="button">Freehand</button>
+            <button class="tool-btn" data-tool="angle" type="button">Angle</button>
+          </div>
+          <div class="color-group">
+            <button class="color-swatch active" data-color="#E0A526" style="background:#E0A526" type="button"></button>
+            <button class="color-swatch" data-color="#E5484D" style="background:#E5484D" type="button"></button>
+            <button class="color-swatch" data-color="#4C9AFF" style="background:#4C9AFF" type="button"></button>
+            <button class="color-swatch" data-color="#FFFFFF" style="background:#FFFFFF;border:1px solid #ccc;" type="button"></button>
+          </div>
+          <button class="ctrl-btn" id="clearDrawBtn" type="button">Clear</button>
+          <span class="draw-hint">Line/Freehand: drag. Angle: click 3 points. Switching frames or tabs clears it.</span>
+        </div>
+
+        <div class="scrub-row">
+          <input type="range" id="scrubBar" min="0" max="1" step="0.01" value="0">
+          <span class="scrub-time" id="scrubTime">0.0s / 0.0s</span>
+        </div>
+
+        <div class="notes-list" id="notesList"></div>
+        <div class="add-note-row">
+          <input type="text" id="newNoteText" placeholder="Type a note about this exact moment…">
+          <button class="btn btn-secondary" id="addNoteBtn" type="button">Add at current time</button>
+        </div>
+
+        <div class="voice-note-tool">
+          <button class="ctrl-btn" id="voiceRecordBtn" type="button">🎙️ Record Voice Note</button>
+          <span class="voice-status" id="voiceStatus"></span>
+        </div>
+        <div id="voiceNotesList"></div>
+
+        <div class="send-back-block">
+          <div class="student-contact" id="studentContact"></div>
+          <button class="ctrl-btn" id="emailStudentBtn" type="button">✉️ Email Student</button>
+          <button class="ctrl-btn" id="callStudentBtn" type="button">📞 Call Student</button>
+          <span class="voice-status" id="emailStatus"></span>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <h4 style="margin-bottom:6px;">Side-by-Side Comparison</h4>
+        <p style="margin-bottom:18px;">Both angles, playing in perfect sync.</p>
+
+        <div class="compare-grid">
+          <div class="compare-col">
+            <div class="compare-label">Down-the-Line <button class="ctrl-btn" id="flipCompareABtn" type="button" style="padding:4px 8px;">&#8646;</button></div>
+            <div class="analysis-video-wrap compare-wrap"><video id="compareVideoA" playsinline muted preload="metadata"></video></div>
+          </div>
+          <div class="compare-col">
+            <div class="compare-label">Face-On <button class="ctrl-btn" id="flipCompareBBtn" type="button" style="padding:4px 8px;">&#8646;</button></div>
+            <div class="analysis-video-wrap compare-wrap"><video id="compareVideoB" playsinline muted preload="metadata"></video></div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <button class="ctrl-btn" id="comparePlayBtn" type="button">
+            <svg id="comparePlayIconSvg" width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7-11-7z" fill="#1A1D21"/></svg>
+            <span id="comparePlayLabel">Play both</span>
+          </button>
+          <button class="ctrl-btn" id="compareStepBackBtn" type="button">&#10094; Frame</button>
+          <button class="ctrl-btn" id="compareStepFwdBtn" type="button">Frame &#10095;</button>
+        </div>
+
+        <div class="scrub-row">
+          <input type="range" id="compareScrubBar" min="0" max="1" step="0.01" value="0">
+          <span class="scrub-time" id="compareScrubTime">0.0s / 0.0s</span>
+        </div>
+      </div>
+
+      <div style="margin-top:20px;">
+        <button class="btn btn-secondary" id="resetToolBtn" type="button">Load a Different Student</button>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
+<script src="review-tool.js"></script>
+</body>
+</html>
