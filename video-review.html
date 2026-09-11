@@ -95,7 +95,8 @@
   .analysis-block h4{font-size:20px;margin-bottom:8px;}
   .analysis-block>p{margin-bottom:22px;max-width:60ch;}
   .analysis-video-wrap{position:relative;background:#000;border-radius:4px;overflow:hidden;aspect-ratio:16/9;max-width:480px;}
-  .analysis-video-wrap video{width:100%;height:100%;object-fit:contain;background:#000;display:block;}
+  .analysis-video-wrap video{width:100%;height:100%;object-fit:contain;background:#000;display:block;transition:transform .15s;}
+  .analysis-video-wrap video.flipped{transform:scaleX(-1);}
   .analysis-controls{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap;max-width:480px;}
   .ctrl-btn{background:var(--cream);border:1px solid var(--rule-strong);border-radius:3px;padding:9px 13px;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;color:var(--ink);display:inline-flex;align-items:center;gap:6px;}
   .ctrl-btn:hover{border-color:var(--gold);}
@@ -124,6 +125,12 @@
   .color-swatch{width:22px;height:22px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;}
   .color-swatch.active{border-color:var(--ink);}
   .draw-hint{font-size:12px;color:var(--text-dim);flex-basis:100%;}
+
+  .compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:800px;}
+  .compare-col{display:flex;flex-direction:column;gap:8px;}
+  .compare-label{font-size:12.5px;color:var(--gold-deep);text-transform:uppercase;letter-spacing:0.03em;font-weight:600;}
+  .compare-wrap{max-width:none;}
+  @media(max-width:640px){.compare-grid{grid-template-columns:1fr;}}
 
   .btn-secondary{display:inline-block;background:transparent;color:var(--gold-deep);border:1px solid var(--rule-strong);padding:12px 22px;font-size:13.5px;border-radius:2px;cursor:pointer;font-family:'Inter',sans-serif;margin-top:18px;}
   .btn-secondary:hover{border-color:var(--gold);}
@@ -311,6 +318,7 @@
               <button class="speed-btn active" data-speed="1" type="button">1x</button>
             </div>
             <button class="ctrl-btn" id="drawToggleBtn" type="button">✏️ Draw on frame</button>
+            <button class="ctrl-btn" id="flipToggleBtn" type="button">&#8646; Flip</button>
           </div>
 
           <div class="draw-toolbar" id="drawToolbar" style="display:none;">
@@ -337,6 +345,41 @@
             <button class="note-btn" type="button" data-t="0.0"><span class="ts">0.0s</span><span class="note-text">Setup — good posture and ball position here.</span></button>
             <button class="note-btn" type="button" data-t="0.6"><span class="ts">0.6s</span><span class="note-text">Watch the arms here — this is the moment they start pulling in toward the body instead of extending out.</span></button>
             <button class="note-btn" type="button" data-t="1.1"><span class="ts">1.1s</span><span class="note-text">Impact — this is where that lost extension costs the most distance and accuracy.</span></button>
+          </div>
+        </div>
+
+        <div class="analysis-block">
+          <div class="feature-tag">New — Side-by-Side Comparison</div>
+          <h4>Compare two swings in sync</h4>
+          <p>One set of controls drives both clips together — useful for comparing a student against reference footage, or the same student's swing before and after a lesson. The right side is mirrored here to show how that looks for a lefty-vs-righty comparison.</p>
+
+          <div class="compare-grid">
+            <div class="compare-col">
+              <div class="compare-label">Your Swing</div>
+              <div class="analysis-video-wrap compare-wrap">
+                <video id="compareVideoA" src="images/sample-swing.mp4" playsinline muted preload="metadata"></video>
+              </div>
+            </div>
+            <div class="compare-col">
+              <div class="compare-label">Reference (mirrored)</div>
+              <div class="analysis-video-wrap compare-wrap">
+                <video id="compareVideoB" class="flipped" src="images/sample-swing.mp4" playsinline muted preload="metadata"></video>
+              </div>
+            </div>
+          </div>
+
+          <div class="analysis-controls">
+            <button class="ctrl-btn" id="comparePlayBtn" type="button">
+              <svg id="comparePlayIconSvg" width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7-11-7z" fill="#152118"/></svg>
+              <span id="comparePlayLabel">Play both</span>
+            </button>
+            <button class="ctrl-btn" id="compareStepBackBtn" type="button">&#10094; Frame</button>
+            <button class="ctrl-btn" id="compareStepFwdBtn" type="button">Frame &#10095;</button>
+          </div>
+
+          <div class="scrub-row">
+            <input type="range" id="compareScrubBar" min="0" max="1" step="0.01" value="0">
+            <span class="scrub-time" id="compareScrubTime">0.0s / 0.0s</span>
           </div>
         </div>
 
@@ -416,6 +459,7 @@
   var drawCanvas = document.getElementById('drawCanvas');
   var drawCtx = drawCanvas ? drawCanvas.getContext('2d') : null;
   var drawToggleBtn = document.getElementById('drawToggleBtn');
+  var flipToggleBtn = document.getElementById('flipToggleBtn');
   var drawToolbar = document.getElementById('drawToolbar');
   var toolBtns = document.querySelectorAll('.tool-btn');
   var colorSwatches = document.querySelectorAll('.color-swatch');
@@ -684,6 +728,14 @@
     drawToggleBtn.addEventListener('click', function () { setDrawMode(!drawMode); });
   }
 
+  if (flipToggleBtn) {
+    flipToggleBtn.addEventListener('click', function () {
+      if (drawMode) { setDrawMode(false); clearStrokes(); }
+      analysisVideo.classList.toggle('flipped');
+      flipToggleBtn.classList.toggle('active');
+    });
+  }
+
   if (drawCanvas) {
     drawCanvas.addEventListener('pointerdown', function (evt) {
       if (!drawMode) return;
@@ -742,6 +794,88 @@
   }
   window.addEventListener('resize', sizeDrawCanvas);
 
+  // ---- Side-by-side synced comparison player ----
+  var compareVideoA = document.getElementById('compareVideoA');
+  var compareVideoB = document.getElementById('compareVideoB');
+  var comparePlayBtn = document.getElementById('comparePlayBtn');
+  var comparePlayIconSvg = document.getElementById('comparePlayIconSvg');
+  var comparePlayLabel = document.getElementById('comparePlayLabel');
+  var compareStepBackBtn = document.getElementById('compareStepBackBtn');
+  var compareStepFwdBtn = document.getElementById('compareStepFwdBtn');
+  var compareScrubBar = document.getElementById('compareScrubBar');
+  var compareScrubTime = document.getElementById('compareScrubTime');
+
+  function setComparePlayLabel(isPlaying) {
+    if (!comparePlayLabel) return;
+    comparePlayLabel.textContent = isPlaying ? 'Pause both' : 'Play both';
+    comparePlayIconSvg.innerHTML = isPlaying
+      ? '<rect x="6" y="5" width="4" height="14" fill="#152118"/><rect x="14" y="5" width="4" height="14" fill="#152118"/>'
+      : '<path d="M8 5v14l11-7-11-7z" fill="#152118"/>';
+  }
+
+  function updateCompareScrubUI() {
+    if (!compareVideoA || !compareVideoA.duration) return;
+    compareScrubBar.max = compareVideoA.duration;
+    compareScrubBar.value = compareVideoA.currentTime;
+    compareScrubTime.textContent = formatT(compareVideoA.currentTime) + ' / ' + formatT(compareVideoA.duration);
+  }
+
+  if (compareVideoA && compareVideoB) {
+    compareVideoA.addEventListener('loadedmetadata', updateCompareScrubUI);
+    compareVideoA.addEventListener('timeupdate', updateCompareScrubUI);
+    // Keep B following A's position; A is the "source of truth"
+    compareVideoA.addEventListener('timeupdate', function () {
+      if (Math.abs(compareVideoB.currentTime - compareVideoA.currentTime) > 0.08) {
+        compareVideoB.currentTime = compareVideoA.currentTime;
+      }
+    });
+    compareVideoA.addEventListener('play', function () { compareVideoB.play(); setComparePlayLabel(true); });
+    compareVideoA.addEventListener('pause', function () { compareVideoB.pause(); setComparePlayLabel(false); });
+    compareVideoA.addEventListener('ended', function () { compareVideoB.pause(); setComparePlayLabel(false); });
+  }
+
+  if (comparePlayBtn) {
+    comparePlayBtn.addEventListener('click', function () {
+      if (compareVideoA.paused) compareVideoA.play(); else compareVideoA.pause();
+    });
+  }
+
+  if (compareStepBackBtn) {
+    compareStepBackBtn.addEventListener('click', function () {
+      compareVideoA.pause();
+      var t = Math.max(0, compareVideoA.currentTime - FRAME_STEP);
+      compareVideoA.currentTime = t;
+      compareVideoB.currentTime = t;
+    });
+  }
+  if (compareStepFwdBtn) {
+    compareStepFwdBtn.addEventListener('click', function () {
+      compareVideoA.pause();
+      var dur = compareVideoA.duration || 0;
+      var t = Math.min(dur, compareVideoA.currentTime + FRAME_STEP);
+      compareVideoA.currentTime = t;
+      compareVideoB.currentTime = t;
+    });
+  }
+
+  if (compareScrubBar) {
+    compareScrubBar.addEventListener('input', function () {
+      compareVideoA.pause();
+      var t = parseFloat(compareScrubBar.value);
+      compareVideoA.currentTime = t;
+      compareVideoB.currentTime = t;
+    });
+  }
+
+  function resetComparePlayer() {
+    if (!compareVideoA || !compareVideoB) return;
+    compareVideoA.pause();
+    compareVideoB.pause();
+    compareVideoA.currentTime = 0;
+    compareVideoB.currentTime = 0;
+    setComparePlayLabel(false);
+  }
+
   function resetAnalysisPlayer() {
     if (!analysisVideo) return;
     analysisVideo.pause();
@@ -753,6 +887,8 @@
     setPlayLabel(false);
     setDrawMode(false);
     clearStrokes();
+    analysisVideo.classList.remove('flipped');
+    if (flipToggleBtn) flipToggleBtn.classList.remove('active');
     noteButtons.forEach(function (btn) { btn.classList.remove('active-note'); });
   }
 
@@ -767,6 +903,7 @@
       yourSwingVideo.controls = false;
       yourSwingThumb.classList.remove('playing');
       resetAnalysisPlayer();
+      resetComparePlayer();
       showPanel(1);
     });
   }
