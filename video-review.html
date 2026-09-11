@@ -115,6 +115,12 @@
   .note-btn .note-text{font-size:14px;color:var(--text);}
 
   .voice-note-tool{margin-top:22px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .send-back-block{margin-top:16px;padding-top:16px;border-top:1px solid var(--rule-strong);display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .student-contact{font-size:13px;color:var(--text-dim);flex-basis:100%;}
+  .student-contact strong{color:var(--ink);font-weight:500;}
+  .student-contact{font-size:13px;color:var(--text-dim);flex-basis:100%;}
+  .student-contact strong{color:var(--ink);font-weight:600;}
+  .ctrl-btn#emailStudentBtn.active{background:var(--forest);color:var(--cream);border-color:var(--forest);}
   .voice-status{font-size:13px;color:var(--text-dim);}
   .voice-status.recording{color:#E5484D;font-weight:600;}
   .ctrl-btn#voiceRecordBtn.active{background:#E5484D;color:#fff;border-color:#E5484D;}
@@ -276,6 +282,7 @@
             <form class="demo-form">
               <div><label for="dName">Name</label><input id="dName" type="text" placeholder="Your name"></div>
               <div><label for="dEmail">Email</label><input id="dEmail" type="email" placeholder="you@email.com"></div>
+              <div><label for="dPhone">Phone</label><input id="dPhone" type="tel" placeholder="(555) 555-5555"></div>
             </form>
 
             <button class="btn-primary" id="submitBtn" type="button" style="margin-top:20px;">Submit My Swing</button>
@@ -379,6 +386,13 @@
             <span class="voice-status" id="voiceStatus"></span>
           </div>
           <div id="voiceNotesList"></div>
+
+          <div class="send-back-block">
+            <div class="student-contact" id="studentContact"></div>
+            <button class="ctrl-btn" id="emailStudentBtn" type="button">✉️ Email Student</button>
+            <button class="ctrl-btn" id="callStudentBtn" type="button">📞 Call Student</button>
+            <span class="voice-status" id="emailStatus"></span>
+          </div>
         </div>
 
         <div class="analysis-block">
@@ -588,6 +602,7 @@
     yourSwingSampleImg.style.display = 'block';
     yourSwingCaption.textContent = "This is the swing you just submitted.";
     resetAnalysisPlayer();
+    updateStudentContact();
   }
 
   if (submitBtn) {
@@ -1041,6 +1056,69 @@
   if (voiceRecordBtn) {
     voiceRecordBtn.addEventListener('click', function () {
       if (isRecording) stopVoiceRecording(); else startVoiceRecording();
+    });
+  }
+
+  var emailStudentBtn = document.getElementById('emailStudentBtn');
+  var emailStatus = document.getElementById('emailStatus');
+  if (emailStudentBtn) {
+    emailStudentBtn.addEventListener('click', function () {
+      var nameField = document.getElementById('dName');
+      var emailField = document.getElementById('dEmail');
+      var studentName = (nameField && nameField.value.trim()) || '';
+      var studentEmail = (emailField && emailField.value.trim()) || '';
+
+      if (!studentEmail) {
+        emailStatus.textContent = "No student email on file — that's captured in the upload step, earlier in this demo.";
+        return;
+      }
+
+      var greetName = studentName || 'there';
+      var subject = 'Your swing breakdown from Glen Davis Golf Schools';
+      var body =
+        'Hi ' + greetName + ',\n\n' +
+        "Thanks for sending in your swing — I took a look and recorded a breakdown for you.\n\n" +
+        '[Paste your recording link here — e.g. the Google Drive link once "Save to My Drive" is built]\n\n' +
+        'Let me know if you have any questions.\n\n' +
+        '— Glen';
+
+      var mailto = 'mailto:' + encodeURIComponent(studentEmail) +
+        '?subject=' + encodeURIComponent(subject) +
+        '&body=' + encodeURIComponent(body);
+
+      window.location.href = mailto;
+      emailStatus.textContent = 'Opening your email app with a draft to ' + studentEmail + '…';
+    });
+  }
+
+  var callStudentBtn = document.getElementById('callStudentBtn');
+  var studentContact = document.getElementById('studentContact');
+
+  function updateStudentContact() {
+    if (!studentContact) return;
+    var name = (document.getElementById('dName') || {}).value || '';
+    var email = (document.getElementById('dEmail') || {}).value || '';
+    var phone = (document.getElementById('dPhone') || {}).value || '';
+    if (!name && !email && !phone) {
+      studentContact.textContent = '';
+      return;
+    }
+    var parts = [];
+    if (name) parts.push('<strong>' + name.trim() + '</strong>');
+    if (email) parts.push(email.trim());
+    if (phone) parts.push(phone.trim());
+    studentContact.innerHTML = parts.join(' &nbsp;·&nbsp; ');
+  }
+
+  if (callStudentBtn) {
+    callStudentBtn.addEventListener('click', function () {
+      var phoneField = document.getElementById('dPhone');
+      var phone = (phoneField && phoneField.value.trim()) || '';
+      if (!phone) {
+        emailStatus.textContent = "No phone number on file — that's captured in the upload step, earlier in this demo.";
+        return;
+      }
+      window.location.href = 'tel:' + phone.replace(/[^\d+]/g, '');
     });
   }
 
