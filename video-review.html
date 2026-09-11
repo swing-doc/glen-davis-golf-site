@@ -629,6 +629,7 @@
       analysisVideo.pause();
       analysisVideo.currentTime = Math.max(0, analysisVideo.currentTime - FRAME_STEP);
       clearStrokes();
+      resetPoseSmoothing();
     });
   }
   if (stepFwdBtn) {
@@ -637,6 +638,7 @@
       var dur = analysisVideo.duration || 0;
       analysisVideo.currentTime = Math.min(dur, analysisVideo.currentTime + FRAME_STEP);
       clearStrokes();
+      resetPoseSmoothing();
     });
   }
 
@@ -654,6 +656,7 @@
       analysisVideo.pause();
       analysisVideo.currentTime = parseFloat(scrubBar.value);
       clearStrokes();
+      resetPoseSmoothing();
     });
   }
 
@@ -663,6 +666,7 @@
       analysisVideo.currentTime = t;
       analysisVideo.play();
       clearStrokes();
+      resetPoseSmoothing();
     });
   });
 
@@ -921,6 +925,28 @@
     return poseDetector;
   }
 
+  var smoothedKeypoints = {};
+  var SMOOTHING = 0.4; // lower = smoother/slower, higher = snappier/more jitter
+
+  function smoothKeypoints(rawKeypoints) {
+    rawKeypoints.forEach(function (kp) {
+      var prev = smoothedKeypoints[kp.name];
+      if (!prev) {
+        smoothedKeypoints[kp.name] = { x: kp.x, y: kp.y, score: kp.score };
+      } else {
+        prev.x += (kp.x - prev.x) * SMOOTHING;
+        prev.y += (kp.y - prev.y) * SMOOTHING;
+        prev.score += (kp.score - prev.score) * SMOOTHING;
+      }
+    });
+    return Object.keys(smoothedKeypoints).map(function (name) {
+      var k = smoothedKeypoints[name];
+      return { name: name, x: k.x, y: k.y, score: k.score };
+    });
+  }
+
+  function resetPoseSmoothing() { smoothedKeypoints = {}; }
+
   function drawSkeleton(keypoints) {
     if (!poseCtx || !poseCanvas) return;
     poseCtx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
@@ -934,7 +960,7 @@
     poseCtx.lineWidth = 3;
     POSE_CONNECTIONS.forEach(function (pair) {
       var a = byName[pair[0]], b = byName[pair[1]];
-      if (a && b && a.score > 0.3 && b.score > 0.3) {
+      if (a && b && a.score > 0.25 && b.score > 0.25) {
         poseCtx.beginPath();
         poseCtx.moveTo(a.x * scaleX, a.y * scaleY);
         poseCtx.lineTo(b.x * scaleX, b.y * scaleY);
@@ -944,7 +970,7 @@
 
     poseCtx.fillStyle = '#F4C542';
     keypoints.forEach(function (kp) {
-      if (kp.score > 0.3) {
+      if (kp.score > 0.25) {
         poseCtx.beginPath();
         poseCtx.arc(kp.x * scaleX, kp.y * scaleY, 4, 0, Math.PI * 2);
         poseCtx.fill();
@@ -956,7 +982,7 @@
     if (!poseActive || !poseDetector) return;
     try {
       var poses = await poseDetector.estimatePoses(analysisVideo, { flipHorizontal: false });
-      if (poses && poses[0]) drawSkeleton(poses[0].keypoints);
+      if (poses && poses[0]) drawSkeleton(smoothKeypoints(poses[0].keypoints));
       else if (poseCtx) poseCtx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
     } catch (e) { /* ignore a dropped frame */ }
     poseLoopHandle = requestAnimationFrame(poseLoop);
@@ -964,6 +990,7 @@
 
   function stopPoseOverlay() {
     poseActive = false;
+    resetPoseSmoothing();
     if (poseLoopHandle) cancelAnimationFrame(poseLoopHandle);
     if (poseCtx && poseCanvas) poseCtx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
     if (poseToggleBtn) { poseToggleBtn.classList.remove('active'); poseToggleBtn.textContent = '🦴 AI Pose Overlay'; }
