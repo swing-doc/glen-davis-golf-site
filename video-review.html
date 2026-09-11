@@ -920,13 +920,13 @@
     await tf.ready();
     poseDetector = await poseDetection.createDetector(
       poseDetection.SupportedModels.MoveNet,
-      { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING }
+      { modelType: poseDetection.movenet.modelType.SINGLEPOSE_THUNDER }
     );
     return poseDetector;
   }
 
   var smoothedKeypoints = {};
-  var SMOOTHING = 0.4; // lower = smoother/slower, higher = snappier/more jitter
+  var SMOOTHING = 0.25; // base smoothing — lower = smoother/slower, higher = snappier/more jitter
 
   function smoothKeypoints(rawKeypoints) {
     rawKeypoints.forEach(function (kp) {
@@ -934,9 +934,12 @@
       if (!prev) {
         smoothedKeypoints[kp.name] = { x: kp.x, y: kp.y, score: kp.score };
       } else {
-        prev.x += (kp.x - prev.x) * SMOOTHING;
-        prev.y += (kp.y - prev.y) * SMOOTHING;
-        prev.score += (kp.score - prev.score) * SMOOTHING;
+        // Confidence-weighted alpha: an uncertain reading barely nudges the point,
+        // a confident reading is trusted more — this is what kills most of the jitter.
+        var alpha = Math.max(0.04, SMOOTHING * kp.score);
+        prev.x += (kp.x - prev.x) * alpha;
+        prev.y += (kp.y - prev.y) * alpha;
+        prev.score += (kp.score - prev.score) * 0.3;
       }
     });
     return Object.keys(smoothedKeypoints).map(function (name) {
