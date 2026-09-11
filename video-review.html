@@ -113,9 +113,27 @@
   .note-btn.active-note{border-color:var(--gold);background:rgba(169,132,60,0.13);}
   .note-btn .ts{color:var(--gold-deep);font-weight:600;font-size:12.5px;min-width:34px;padding-top:1px;}
   .note-btn .note-text{font-size:14px;color:var(--text);}
+
+  .voice-note-tool{margin-top:22px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .voice-status{font-size:13px;color:var(--text-dim);}
+  .voice-status.recording{color:#E5484D;font-weight:600;}
+  .ctrl-btn#voiceRecordBtn.active{background:#E5484D;color:#fff;border-color:#E5484D;}
+  .voice-note-item{display:flex;align-items:center;gap:12px;background:var(--cream);border-left:3px solid #4C9AFF;border-radius:3px;padding:10px 14px;margin-top:8px;max-width:560px;}
+  .voice-note-item .ts{color:var(--gold-deep);font-weight:600;font-size:12.5px;min-width:34px;}
+  .voice-play-btn{background:var(--panel);border:1px solid var(--rule-strong);border-radius:50%;width:28px;height:28px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;font-size:12px;flex-shrink:0;}
+  .voice-play-btn:hover{border-color:var(--gold);}
+  .voice-note-label{font-size:13px;color:var(--text-dim);flex:1;}
+  .remove-voice{border:none;background:none;color:var(--text-dim);font-size:18px;cursor:pointer;line-height:1;padding:2px 4px;}
+  .remove-voice:hover{color:#E5484D;}
   @media(max-width:760px){.analysis-video-wrap,.analysis-controls,.scrub-row,.notes-list,.draw-toolbar{max-width:100%;}}
 
   #poseCanvas{position:absolute;top:0;left:0;pointer-events:none;}
+  .guide-line{position:absolute;z-index:6;touch-action:none;}
+  .guide-v{top:0;bottom:0;width:16px;margin-left:-8px;cursor:ew-resize;display:flex;justify-content:center;}
+  .guide-v i{display:block;width:2px;height:100%;background:repeating-linear-gradient(to bottom,#F4C542 0 6px,transparent 6px 12px);pointer-events:none;}
+  .guide-h{left:0;right:0;height:16px;margin-top:-8px;cursor:ns-resize;display:flex;align-items:center;}
+  .guide-h i{display:block;height:2px;width:100%;background:repeating-linear-gradient(to right,#F4C542 0 6px,transparent 6px 12px);pointer-events:none;}
+  .guide-line.dragging i{background-color:#39E58C;}
   #drawCanvas{position:absolute;top:0;left:0;pointer-events:none;touch-action:none;}
   #drawCanvas.drawing-active{pointer-events:auto;cursor:crosshair;}
   .ctrl-btn.loading{opacity:0.65;cursor:wait;}
@@ -306,6 +324,8 @@
             <video id="analysisVideo" src="images/sample-swing.mp4" playsinline muted preload="metadata"></video>
             <canvas id="poseCanvas"></canvas>
             <canvas id="drawCanvas"></canvas>
+            <div class="guide-line guide-v" id="guideV" style="display:none;left:50%;"><i></i></div>
+            <div class="guide-line guide-h" id="guideH" style="display:none;top:70%;"><i></i></div>
           </div>
 
           <div class="analysis-controls">
@@ -323,6 +343,7 @@
             <button class="ctrl-btn" id="drawToggleBtn" type="button">✏️ Draw on frame</button>
             <button class="ctrl-btn" id="flipToggleBtn" type="button">&#8646; Flip</button>
             <button class="ctrl-btn" id="poseToggleBtn" type="button">🦴 AI Pose Overlay</button>
+            <button class="ctrl-btn" id="guideToggleBtn" type="button">📐 Guide Lines</button>
             <button class="ctrl-btn" id="exportFrameBtn" type="button">📸 Save Frame</button>
           </div>
 
@@ -352,6 +373,12 @@
             <button class="note-btn" type="button" data-t="0.6"><span class="ts">0.6s</span><span class="note-text">Watch the arms here — this is the moment they start pulling in toward the body instead of extending out.</span></button>
             <button class="note-btn" type="button" data-t="1.1"><span class="ts">1.1s</span><span class="note-text">Impact — this is where that lost extension costs the most distance and accuracy.</span></button>
           </div>
+
+          <div class="voice-note-tool">
+            <button class="ctrl-btn" id="voiceRecordBtn" type="button">🎙️ Record Voice Note</button>
+            <span class="voice-status" id="voiceStatus"></span>
+          </div>
+          <div id="voiceNotesList"></div>
         </div>
 
         <div class="analysis-block">
@@ -476,6 +503,9 @@
   var colorSwatches = document.querySelectorAll('.color-swatch');
   var clearDrawBtn = document.getElementById('clearDrawBtn');
   var exportFrameBtn = document.getElementById('exportFrameBtn');
+  var guideToggleBtn = document.getElementById('guideToggleBtn');
+  var guideV = document.getElementById('guideV');
+  var guideH = document.getElementById('guideH');
   var FRAME_STEP = 1 / 25;
   var chosenObjectUrl = null;
   var chosenFileName = '';
@@ -885,6 +915,135 @@
     });
   }
 
+  // ---- Guide lines (draggable plumb line + ground line) ----
+  function makeGuideDraggable(el, axis) {
+    var dragging = false;
+    el.addEventListener('pointerdown', function (evt) {
+      dragging = true;
+      el.classList.add('dragging');
+      el.setPointerCapture(evt.pointerId);
+    });
+    el.addEventListener('pointermove', function (evt) {
+      if (!dragging) return;
+      var rect = analysisVideoWrap.getBoundingClientRect();
+      if (axis === 'x') {
+        var pct = ((evt.clientX - rect.left) / rect.width) * 100;
+        el.style.left = Math.max(0, Math.min(100, pct)) + '%';
+      } else {
+        var pctY = ((evt.clientY - rect.top) / rect.height) * 100;
+        el.style.top = Math.max(0, Math.min(100, pctY)) + '%';
+      }
+    });
+    function endDrag() { dragging = false; el.classList.remove('dragging'); }
+    el.addEventListener('pointerup', endDrag);
+    el.addEventListener('pointercancel', endDrag);
+  }
+
+  if (guideV) makeGuideDraggable(guideV, 'x');
+  if (guideH) makeGuideDraggable(guideH, 'y');
+
+  if (guideToggleBtn) {
+    guideToggleBtn.addEventListener('click', function () {
+      var showing = guideV.style.display !== 'none';
+      guideV.style.display = showing ? 'none' : 'block';
+      guideH.style.display = showing ? 'none' : 'block';
+      guideToggleBtn.classList.toggle('active', !showing);
+    });
+  }
+
+  // ---- Voice-note recording (real mic recording, in-browser only in this demo) ----
+  var voiceRecordBtn = document.getElementById('voiceRecordBtn');
+  var voiceStatus = document.getElementById('voiceStatus');
+  var voiceNotesList = document.getElementById('voiceNotesList');
+  var activeMediaRecorder = null;
+  var recordedChunks = [];
+  var isRecording = false;
+  var recordStartMs = 0;
+  var recordStartVideoTime = 0;
+  var recordTimerHandle = null;
+  var voiceNoteCounter = 0;
+  var activeStream = null;
+
+  async function startVoiceRecording() {
+    try {
+      activeStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (e) {
+      voiceStatus.textContent = "Couldn't access the microphone — check your browser's permission settings.";
+      return;
+    }
+    recordedChunks = [];
+    try {
+      activeMediaRecorder = new MediaRecorder(activeStream);
+    } catch (e) {
+      voiceStatus.textContent = 'Voice recording is not supported in this browser.';
+      activeStream.getTracks().forEach(function (t) { t.stop(); });
+      return;
+    }
+    activeMediaRecorder.addEventListener('dataavailable', function (e) {
+      if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+    });
+    activeMediaRecorder.addEventListener('stop', function () {
+      var blob = new Blob(recordedChunks, { type: 'audio/webm' });
+      addVoiceNote(URL.createObjectURL(blob), recordStartVideoTime);
+      activeStream.getTracks().forEach(function (t) { t.stop(); });
+    });
+    recordStartVideoTime = analysisVideo.currentTime;
+    recordStartMs = Date.now();
+    activeMediaRecorder.start();
+    isRecording = true;
+    voiceRecordBtn.textContent = '⏹ Stop Recording';
+    voiceRecordBtn.classList.add('active');
+    voiceStatus.classList.add('recording');
+    recordTimerHandle = setInterval(function () {
+      var secs = Math.floor((Date.now() - recordStartMs) / 1000);
+      voiceStatus.textContent = '● Recording… ' + secs + 's';
+    }, 250);
+  }
+
+  function stopVoiceRecording() {
+    if (activeMediaRecorder && isRecording) activeMediaRecorder.stop();
+    isRecording = false;
+    clearInterval(recordTimerHandle);
+    voiceRecordBtn.textContent = '🎙️ Record Voice Note';
+    voiceRecordBtn.classList.remove('active');
+    voiceStatus.classList.remove('recording');
+    voiceStatus.textContent = '';
+  }
+
+  function addVoiceNote(url, atTime) {
+    voiceNoteCounter++;
+    var item = document.createElement('div');
+    item.className = 'voice-note-item';
+    item.innerHTML =
+      '<span class="ts">' + formatT(atTime) + '</span>' +
+      '<button class="voice-play-btn" type="button" aria-label="Play voice note">▶</button>' +
+      '<audio class="voice-audio" src="' + url + '"></audio>' +
+      '<span class="voice-note-label">Voice note ' + voiceNoteCounter + '</span>' +
+      '<button class="remove-voice" type="button" aria-label="Remove">&times;</button>';
+    voiceNotesList.appendChild(item);
+
+    var audioEl = item.querySelector('.voice-audio');
+    var playBtn = item.querySelector('.voice-play-btn');
+    playBtn.addEventListener('click', function () {
+      analysisVideo.currentTime = atTime;
+      resetPoseSmoothing();
+      audioEl.currentTime = 0;
+      audioEl.play();
+      analysisVideo.play();
+    });
+    item.querySelector('.remove-voice').addEventListener('click', function () {
+      audioEl.pause();
+      URL.revokeObjectURL(url);
+      voiceNotesList.removeChild(item);
+    });
+  }
+
+  if (voiceRecordBtn) {
+    voiceRecordBtn.addEventListener('click', function () {
+      if (isRecording) stopVoiceRecording(); else startVoiceRecording();
+    });
+  }
+
   if (analysisVideo) {
     analysisVideo.addEventListener('loadedmetadata', sizeDrawCanvas);
     analysisVideo.addEventListener('play', function () { setDrawMode(false); clearStrokes(); });
@@ -1120,6 +1279,13 @@
     analysisVideo.classList.remove('flipped');
     if (flipToggleBtn) flipToggleBtn.classList.remove('active');
     stopPoseOverlay();
+    if (guideV && guideH) {
+      guideV.style.display = 'none';
+      guideH.style.display = 'none';
+      guideV.style.left = '50%';
+      guideH.style.top = '70%';
+      if (guideToggleBtn) guideToggleBtn.classList.remove('active');
+    }
     noteButtons.forEach(function (btn) { btn.classList.remove('active-note'); });
   }
 
@@ -1135,6 +1301,8 @@
       yourSwingThumb.classList.remove('playing');
       resetAnalysisPlayer();
       resetComparePlayer();
+      if (isRecording) stopVoiceRecording();
+      if (voiceNotesList) voiceNotesList.innerHTML = '';
       showPanel(1);
     });
   }
