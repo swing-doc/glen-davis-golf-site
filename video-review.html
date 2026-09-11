@@ -99,6 +99,7 @@
   .analysis-controls{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap;max-width:480px;}
   .ctrl-btn{background:var(--cream);border:1px solid var(--rule-strong);border-radius:3px;padding:9px 13px;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif;color:var(--ink);display:inline-flex;align-items:center;gap:6px;}
   .ctrl-btn:hover{border-color:var(--gold);}
+  .ctrl-btn.active{background:var(--forest);color:var(--cream);border-color:var(--forest);}
   .speed-group{display:flex;gap:3px;background:var(--cream);border:1px solid var(--rule-strong);border-radius:3px;padding:3px;}
   .speed-btn{background:transparent;border:none;padding:7px 11px;font-size:12.5px;border-radius:2px;cursor:pointer;color:var(--text-dim);font-family:'Inter',sans-serif;}
   .speed-btn.active{background:var(--forest);color:var(--cream);}
@@ -111,7 +112,18 @@
   .note-btn.active-note{border-color:var(--gold);background:rgba(169,132,60,0.13);}
   .note-btn .ts{color:var(--gold-deep);font-weight:600;font-size:12.5px;min-width:34px;padding-top:1px;}
   .note-btn .note-text{font-size:14px;color:var(--text);}
-  @media(max-width:760px){.analysis-video-wrap,.analysis-controls,.scrub-row,.notes-list{max-width:100%;}}
+  @media(max-width:760px){.analysis-video-wrap,.analysis-controls,.scrub-row,.notes-list,.draw-toolbar{max-width:100%;}}
+
+  #drawCanvas{position:absolute;top:0;left:0;pointer-events:none;touch-action:none;}
+  #drawCanvas.drawing-active{pointer-events:auto;cursor:crosshair;}
+  .draw-toolbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:14px;max-width:480px;background:var(--cream);border:1px solid var(--rule-strong);border-radius:3px;padding:10px 14px;}
+  .tool-group{display:flex;gap:3px;background:var(--panel);border:1px solid var(--rule-strong);border-radius:3px;padding:3px;}
+  .tool-btn{background:transparent;border:none;padding:7px 12px;font-size:12.5px;border-radius:2px;cursor:pointer;color:var(--text-dim);font-family:'Inter',sans-serif;}
+  .tool-btn.active{background:var(--forest);color:var(--cream);}
+  .color-group{display:flex;gap:6px;}
+  .color-swatch{width:22px;height:22px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;}
+  .color-swatch.active{border-color:var(--ink);}
+  .draw-hint{font-size:12px;color:var(--text-dim);flex-basis:100%;}
 
   .btn-secondary{display:inline-block;background:transparent;color:var(--gold-deep);border:1px solid var(--rule-strong);padding:12px 22px;font-size:13.5px;border-radius:2px;cursor:pointer;font-family:'Inter',sans-serif;margin-top:18px;}
   .btn-secondary:hover{border-color:var(--gold);}
@@ -281,8 +293,9 @@
           <h4>See how Glen breaks down a swing</h4>
           <p>Frame-by-frame stepping, slow motion, and notes tied to the exact moment they happen — this is what a real breakdown looks like, using an actual clip of Glen's swing.</p>
 
-          <div class="analysis-video-wrap">
+          <div class="analysis-video-wrap" id="analysisVideoWrap">
             <video id="analysisVideo" src="images/sample-swing.mp4" playsinline muted preload="metadata"></video>
+            <canvas id="drawCanvas"></canvas>
           </div>
 
           <div class="analysis-controls">
@@ -297,6 +310,22 @@
               <button class="speed-btn" data-speed="0.5" type="button">0.5x</button>
               <button class="speed-btn active" data-speed="1" type="button">1x</button>
             </div>
+            <button class="ctrl-btn" id="drawToggleBtn" type="button">✏️ Draw on frame</button>
+          </div>
+
+          <div class="draw-toolbar" id="drawToolbar" style="display:none;">
+            <div class="tool-group">
+              <button class="tool-btn active" data-tool="line" type="button">Line</button>
+              <button class="tool-btn" data-tool="freehand" type="button">Freehand</button>
+            </div>
+            <div class="color-group">
+              <button class="color-swatch active" data-color="#F4C542" style="background:#F4C542" type="button" aria-label="Gold"></button>
+              <button class="color-swatch" data-color="#E5484D" style="background:#E5484D" type="button" aria-label="Red"></button>
+              <button class="color-swatch" data-color="#4C9AFF" style="background:#4C9AFF" type="button" aria-label="Blue"></button>
+              <button class="color-swatch" data-color="#FFFFFF" style="background:#FFFFFF;border:1px solid rgba(21,33,24,0.3);" type="button" aria-label="White"></button>
+            </div>
+            <button class="ctrl-btn" id="clearDrawBtn" type="button">Clear</button>
+            <span class="draw-hint">Pause on a frame, then drag to draw. Play or step to a new frame clears it.</span>
           </div>
 
           <div class="scrub-row">
@@ -383,10 +412,24 @@
   var scrubTime = document.getElementById('scrubTime');
   var notesList = document.getElementById('notesList');
   var noteButtons = notesList ? notesList.querySelectorAll('.note-btn') : [];
+  var analysisVideoWrap = document.getElementById('analysisVideoWrap');
+  var drawCanvas = document.getElementById('drawCanvas');
+  var drawCtx = drawCanvas ? drawCanvas.getContext('2d') : null;
+  var drawToggleBtn = document.getElementById('drawToggleBtn');
+  var drawToolbar = document.getElementById('drawToolbar');
+  var toolBtns = document.querySelectorAll('.tool-btn');
+  var colorSwatches = document.querySelectorAll('.color-swatch');
+  var clearDrawBtn = document.getElementById('clearDrawBtn');
   var FRAME_STEP = 1 / 25;
   var chosenObjectUrl = null;
   var chosenFileName = '';
   var chosenIsVideo = false;
+  var drawMode = false;
+  var currentTool = 'line';
+  var currentColor = '#F4C542';
+  var strokes = [];
+  var activeStroke = null;
+  var isDrawing = false;
 
   function showPanel(n) {
     [panel1, panel2, panel3].forEach(function (p) { p.classList.remove('active'); });
@@ -532,6 +575,7 @@
     stepBackBtn.addEventListener('click', function () {
       analysisVideo.pause();
       analysisVideo.currentTime = Math.max(0, analysisVideo.currentTime - FRAME_STEP);
+      clearStrokes();
     });
   }
   if (stepFwdBtn) {
@@ -539,6 +583,7 @@
       analysisVideo.pause();
       var dur = analysisVideo.duration || 0;
       analysisVideo.currentTime = Math.min(dur, analysisVideo.currentTime + FRAME_STEP);
+      clearStrokes();
     });
   }
 
@@ -555,6 +600,7 @@
     scrubBar.addEventListener('input', function () {
       analysisVideo.pause();
       analysisVideo.currentTime = parseFloat(scrubBar.value);
+      clearStrokes();
     });
   }
 
@@ -563,8 +609,138 @@
       var t = parseFloat(btn.getAttribute('data-t'));
       analysisVideo.currentTime = t;
       analysisVideo.play();
+      clearStrokes();
     });
   });
+
+  // ---- Telestrator / drawing overlay ----
+  function sizeDrawCanvas() {
+    if (!drawCanvas || !analysisVideo || !analysisVideoWrap) return;
+    var vw = analysisVideo.videoWidth, vh = analysisVideo.videoHeight;
+    var cw = analysisVideoWrap.clientWidth, ch = analysisVideoWrap.clientHeight;
+    if (!vw || !vh || !cw || !ch) return;
+    var videoAspect = vw / vh, boxAspect = cw / ch;
+    var renderedW, renderedH, offsetX, offsetY;
+    if (videoAspect > boxAspect) {
+      renderedW = cw; renderedH = cw / videoAspect; offsetX = 0; offsetY = (ch - renderedH) / 2;
+    } else {
+      renderedH = ch; renderedW = ch * videoAspect; offsetY = 0; offsetX = (cw - renderedW) / 2;
+    }
+    drawCanvas.style.width = renderedW + 'px';
+    drawCanvas.style.height = renderedH + 'px';
+    drawCanvas.style.left = offsetX + 'px';
+    drawCanvas.style.top = offsetY + 'px';
+    drawCanvas.width = renderedW;
+    drawCanvas.height = renderedH;
+    redrawStrokes();
+  }
+
+  function redrawStrokes() {
+    if (!drawCtx) return;
+    drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+    strokes.forEach(paintStroke);
+    if (activeStroke) paintStroke(activeStroke);
+  }
+
+  function paintStroke(s) {
+    drawCtx.strokeStyle = s.color;
+    drawCtx.lineWidth = 3;
+    drawCtx.lineCap = 'round';
+    drawCtx.lineJoin = 'round';
+    if (s.tool === 'line') {
+      drawCtx.beginPath();
+      drawCtx.moveTo(s.x1, s.y1);
+      drawCtx.lineTo(s.x2, s.y2);
+      drawCtx.stroke();
+    } else {
+      if (s.points.length < 2) return;
+      drawCtx.beginPath();
+      drawCtx.moveTo(s.points[0].x, s.points[0].y);
+      for (var i = 1; i < s.points.length; i++) drawCtx.lineTo(s.points[i].x, s.points[i].y);
+      drawCtx.stroke();
+    }
+  }
+
+  function clearStrokes() {
+    strokes = [];
+    activeStroke = null;
+    if (drawCtx) drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+  }
+
+  function getCanvasPoint(evt) {
+    var rect = drawCanvas.getBoundingClientRect();
+    return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+  }
+
+  function setDrawMode(on) {
+    drawMode = on;
+    if (drawToggleBtn) drawToggleBtn.classList.toggle('active', on);
+    if (drawToolbar) drawToolbar.style.display = on ? 'flex' : 'none';
+    if (drawCanvas) drawCanvas.classList.toggle('drawing-active', on);
+    if (on) { analysisVideo.pause(); sizeDrawCanvas(); }
+  }
+
+  if (drawToggleBtn) {
+    drawToggleBtn.addEventListener('click', function () { setDrawMode(!drawMode); });
+  }
+
+  if (drawCanvas) {
+    drawCanvas.addEventListener('pointerdown', function (evt) {
+      if (!drawMode) return;
+      isDrawing = true;
+      var p = getCanvasPoint(evt);
+      if (currentTool === 'line') {
+        activeStroke = { tool: 'line', color: currentColor, x1: p.x, y1: p.y, x2: p.x, y2: p.y };
+      } else {
+        activeStroke = { tool: 'freehand', color: currentColor, points: [p] };
+      }
+      drawCanvas.setPointerCapture(evt.pointerId);
+    });
+    drawCanvas.addEventListener('pointermove', function (evt) {
+      if (!drawMode || !isDrawing || !activeStroke) return;
+      var p = getCanvasPoint(evt);
+      if (currentTool === 'line') {
+        activeStroke.x2 = p.x; activeStroke.y2 = p.y;
+      } else {
+        activeStroke.points.push(p);
+      }
+      redrawStrokes();
+    });
+    function endStroke() {
+      if (!isDrawing) return;
+      isDrawing = false;
+      if (activeStroke) { strokes.push(activeStroke); activeStroke = null; }
+      redrawStrokes();
+    }
+    drawCanvas.addEventListener('pointerup', endStroke);
+    drawCanvas.addEventListener('pointerleave', endStroke);
+  }
+
+  toolBtns.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      currentTool = btn.getAttribute('data-tool');
+      toolBtns.forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+    });
+  });
+
+  colorSwatches.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      currentColor = btn.getAttribute('data-color');
+      colorSwatches.forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+    });
+  });
+
+  if (clearDrawBtn) {
+    clearDrawBtn.addEventListener('click', clearStrokes);
+  }
+
+  if (analysisVideo) {
+    analysisVideo.addEventListener('loadedmetadata', sizeDrawCanvas);
+    analysisVideo.addEventListener('play', function () { setDrawMode(false); clearStrokes(); });
+  }
+  window.addEventListener('resize', sizeDrawCanvas);
 
   function resetAnalysisPlayer() {
     if (!analysisVideo) return;
@@ -575,6 +751,8 @@
     var oneX = document.querySelector('.speed-btn[data-speed="1"]');
     if (oneX) oneX.classList.add('active');
     setPlayLabel(false);
+    setDrawMode(false);
+    clearStrokes();
     noteButtons.forEach(function (btn) { btn.classList.remove('active-note'); });
   }
 
