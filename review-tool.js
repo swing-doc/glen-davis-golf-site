@@ -703,24 +703,25 @@ function showLoadStatus_(chipEl, text) {
   if (chipEl) chipEl.innerHTML = '<div class="file-chip">' + text + '</div>';
 }
 
-function autoLoadSubmission_(id) {
+function autoLoadSubmission_(id, key) {
   var dtlUrl = null;
+  var auth = 'key=' + encodeURIComponent(key) + '&id=' + encodeURIComponent(id);
 
   showLoadStatus_(chipDTL, 'Loading…');
   showLoadStatus_(chipFO, 'Waiting…');
 
-  apiGet_('id=' + encodeURIComponent(id) + '&part=meta')
+  apiGet_(auth + '&part=meta')
     .then(function (meta) {
       if (meta.name) document.getElementById('stName').value = meta.name;
       if (meta.email) document.getElementById('stEmail').value = meta.email;
       if (meta.phone) document.getElementById('stPhone').value = meta.phone;
-      return apiGet_('id=' + encodeURIComponent(id) + '&part=video&slot=DTL');
+      return apiGet_(auth + '&part=video&slot=DTL');
     })
     .then(function (dtl) {
       dtlUrl = base64ToBlobUrl_(dtl.base64, dtl.mimeType);
       showLoadStatus_(chipDTL, '✓ ' + dtl.fileName);
       showLoadStatus_(chipFO, 'Loading…');
-      return apiGet_('id=' + encodeURIComponent(id) + '&part=video&slot=FO');
+      return apiGet_(auth + '&part=video&slot=FO');
     })
     .then(function (fo) {
       var foUrl = base64ToBlobUrl_(fo.base64, fo.mimeType);
@@ -737,6 +738,17 @@ function autoLoadSubmission_(id) {
 }
 
 (function () {
-  var id = new URLSearchParams(window.location.search).get('id');
-  if (id) autoLoadSubmission_(id);
+  var params = new URLSearchParams(window.location.search);
+  var id = params.get('id');
+  var key = params.get('key');
+  if (!id) return;
+
+  if (!key) {
+    loadError.textContent = 'That review link is missing its access key. ' +
+      'Use the full link from your notification email, or choose the files manually below.';
+    loadError.classList.add('show');
+    return;
+  }
+
+  autoLoadSubmission_(id, key);
 })();
