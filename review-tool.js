@@ -41,10 +41,27 @@ function wireLoadBox(input, chipEl) {
 wireLoadBox(fileDTL, chipDTL);
 wireLoadBox(fileFO, chipFO);
 
+/**
+ * Shows what the student asked to have looked at. Hidden entirely when
+ * they didn't answer, so the panel doesn't carry an empty box around.
+ */
+function showStudentGoal_(goal) {
+  var wrap = document.getElementById('stGoalWrap');
+  var box = document.getElementById('stGoal');
+  if (!wrap || !box) return;
+  if (goal && goal.trim()) {
+    box.value = goal.trim();
+    wrap.style.display = '';
+  } else {
+    box.value = '';
+    wrap.style.display = 'none';
+  }
+}
+
 function parseInfoFileText(text) {
   var result = {};
   text.split('\n').forEach(function (line) {
-    var m = line.match(/^\s*(Name|Email|Phone)\s*:\s*(.*)$/i);
+    var m = line.match(/^\s*(Name|Email|Phone|Goal)\s*:\s*(.*)$/i);
     if (m) result[m[1].toLowerCase()] = m[2].trim();
   });
   return result;
@@ -61,6 +78,7 @@ if (fileInfo) {
       if (parsed.name) document.getElementById('stName').value = parsed.name;
       if (parsed.email) document.getElementById('stEmail').value = parsed.email;
       if (parsed.phone) document.getElementById('stPhone').value = parsed.phone;
+      showStudentGoal_(parsed.goal);
     };
     reader.readAsText(f);
   });
@@ -107,6 +125,7 @@ document.getElementById('resetToolBtn').addEventListener('click', function () {
   document.getElementById('stName').value = '';
   document.getElementById('stEmail').value = '';
   document.getElementById('stPhone').value = '';
+  showStudentGoal_('');
   document.getElementById('notesList').innerHTML = '';
   document.getElementById('voiceNotesList').innerHTML = '';
   resetAnalysisPlayer();
@@ -715,6 +734,7 @@ function autoLoadSubmission_(id, key) {
       if (meta.name) document.getElementById('stName').value = meta.name;
       if (meta.email) document.getElementById('stEmail').value = meta.email;
       if (meta.phone) document.getElementById('stPhone').value = meta.phone;
+      showStudentGoal_(meta.goal);
       return apiGet_(auth + '&part=video&slot=DTL');
     })
     .then(function (dtl) {
