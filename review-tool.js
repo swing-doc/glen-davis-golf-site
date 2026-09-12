@@ -13,19 +13,58 @@ var loadPanel = document.getElementById('loadPanel');
 var reviewArea = document.getElementById('reviewArea');
 var fileDTL = document.getElementById('fileDTL');
 var fileFO = document.getElementById('fileFO');
+var fileInfo = document.getElementById('fileInfo');
 var chipDTL = document.getElementById('chipDTL');
 var chipFO = document.getElementById('chipFO');
+var chipInfo = document.getElementById('chipInfo');
 var startReviewBtn = document.getElementById('startReviewBtn');
 var loadError = document.getElementById('loadError');
+
+function extractNameFromFilename(fname) {
+  var m = fname.match(/^\d{4}-\d{2}-\d{2}_\d{4}_(.+?)_(DownTheLine|FaceOn)_/);
+  return m ? m[1].replace(/_/g, ' ') : '';
+}
 
 function wireLoadBox(input, chipEl) {
   input.addEventListener('change', function () {
     var f = input.files && input.files[0];
-    if (f) chipEl.innerHTML = '<div class="file-chip">✓ ' + f.name + '</div>';
+    if (f) {
+      chipEl.innerHTML = '<div class="file-chip">✓ ' + f.name + '</div>';
+      var nameField = document.getElementById('stName');
+      if (nameField && !nameField.value.trim()) {
+        var guessedName = extractNameFromFilename(f.name);
+        if (guessedName) nameField.value = guessedName;
+      }
+    }
   });
 }
 wireLoadBox(fileDTL, chipDTL);
 wireLoadBox(fileFO, chipFO);
+
+function parseInfoFileText(text) {
+  var result = {};
+  text.split('\n').forEach(function (line) {
+    var m = line.match(/^\s*(Name|Email|Phone)\s*:\s*(.*)$/i);
+    if (m) result[m[1].toLowerCase()] = m[2].trim();
+  });
+  return result;
+}
+
+if (fileInfo) {
+  fileInfo.addEventListener('change', function () {
+    var f = fileInfo.files && fileInfo.files[0];
+    if (!f) return;
+    chipInfo.innerHTML = '<div class="file-chip">✓ ' + f.name + '</div>';
+    var reader = new FileReader();
+    reader.onload = function () {
+      var parsed = parseInfoFileText(String(reader.result));
+      if (parsed.name) document.getElementById('stName').value = parsed.name;
+      if (parsed.email) document.getElementById('stEmail').value = parsed.email;
+      if (parsed.phone) document.getElementById('stPhone').value = parsed.phone;
+    };
+    reader.readAsText(f);
+  });
+}
 
 startReviewBtn.addEventListener('click', function () {
   var dtl = fileDTL.files && fileDTL.files[0];
@@ -53,6 +92,8 @@ document.getElementById('resetToolBtn').addEventListener('click', function () {
   reviewArea.classList.remove('active');
   fileDTL.value = ''; fileFO.value = '';
   chipDTL.innerHTML = ''; chipFO.innerHTML = '';
+  if (fileInfo) fileInfo.value = '';
+  if (chipInfo) chipInfo.innerHTML = '';
   document.getElementById('stName').value = '';
   document.getElementById('stEmail').value = '';
   document.getElementById('stPhone').value = '';
