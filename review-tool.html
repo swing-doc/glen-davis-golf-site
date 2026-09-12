@@ -1,296 +1,648 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Swing Review Tool</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --ink:#1A1D21; --text:#3C4149; --dim:#6B7280;
-    --line:#E4E7EB; --line-strong:#D0D4DA;
-    --bg:#F5F6F8; --panel:#FFFFFF;
-    --accent:#4F5AF0; --accent-dark:#3D46C4;
-    --mark:#E0A526; --mark-dark:#B8860F;
-    --green:#12805C; --green-bg:#E7F6EF;
-    --red:#C0392B;
+// ====================================================================
+// SWING REVIEW TOOL -- main logic
+// Loads two local video files (no upload, no server) and lets a coach
+// use frame-stepping, slow-mo, drawing, AI pose overlay, guide lines,
+// voice notes, and synced side-by-side comparison on them.
+// ====================================================================
+
+var videoUrlDTL = null;
+var videoUrlFO = null;
+var activeView = 'dtl'; // 'dtl' or 'fo'
+
+var loadPanel = document.getElementById('loadPanel');
+var reviewArea = document.getElementById('reviewArea');
+var fileDTL = document.getElementById('fileDTL');
+var fileFO = document.getElementById('fileFO');
+var fileInfo = document.getElementById('fileInfo');
+var chipDTL = document.getElementById('chipDTL');
+var chipFO = document.getElementById('chipFO');
+var chipInfo = document.getElementById('chipInfo');
+var startReviewBtn = document.getElementById('startReviewBtn');
+var loadError = document.getElementById('loadError');
+
+function extractNameFromFilename(fname) {
+  var m = fname.match(/^\d{4}-\d{2}-\d{2}_\d{4}_(.+?)_(DownTheLine|FaceOn)_/);
+  return m ? m[1].replace(/_/g, ' ') : '';
+}
+
+function wireLoadBox(input, chipEl) {
+  input.addEventListener('change', function () {
+    var f = input.files && input.files[0];
+    if (f) {
+      chipEl.innerHTML = '<div class="file-chip">✓ ' + f.name + '</div>';
+      var nameField = document.getElementById('stName');
+      if (nameField && !nameField.value.trim()) {
+        var guessedName = extractNameFromFilename(f.name);
+        if (guessedName) nameField.value = guessedName;
+      }
+    }
+  });
+}
+wireLoadBox(fileDTL, chipDTL);
+wireLoadBox(fileFO, chipFO);
+
+function parseInfoFileText(text) {
+  var result = {};
+  text.split('\n').forEach(function (line) {
+    var m = line.match(/^\s*(Name|Email|Phone)\s*:\s*(.*)$/i);
+    if (m) result[m[1].toLowerCase()] = m[2].trim();
+  });
+  return result;
+}
+
+if (fileInfo) {
+  fileInfo.addEventListener('change', function () {
+    var f = fileInfo.files && fileInfo.files[0];
+    if (!f) return;
+    chipInfo.innerHTML = '<div class="file-chip">✓ ' + f.name + '</div>';
+    var reader = new FileReader();
+    reader.onload = function () {
+      var parsed = parseInfoFileText(String(reader.result));
+      if (parsed.name) document.getElementById('stName').value = parsed.name;
+      if (parsed.email) document.getElementById('stEmail').value = parsed.email;
+      if (parsed.phone) document.getElementById('stPhone').value = parsed.phone;
+    };
+    reader.readAsText(f);
+  });
+}
+
+startReviewBtn.addEventListener('click', function () {
+  var dtl = fileDTL.files && fileDTL.files[0];
+  var fo = fileFO.files && fileFO.files[0];
+  if (!dtl || !fo) {
+    loadError.classList.add('show');
+    return;
   }
-  *{box-sizing:border-box;}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:15px;line-height:1.6;}
-  h1,h2,h3,h4{margin:0;color:var(--ink);font-weight:700;}
-  p{margin:0 0 1em;color:var(--dim);}
-  .wrap{max-width:1080px;margin:0 auto;padding:0 24px;}
+  loadError.classList.remove('show');
+  if (videoUrlDTL) URL.revokeObjectURL(videoUrlDTL);
+  if (videoUrlFO) URL.revokeObjectURL(videoUrlFO);
+  videoUrlDTL = URL.createObjectURL(dtl);
+  videoUrlFO = URL.createObjectURL(fo);
 
-  header{background:var(--panel);border-bottom:1px solid var(--line);padding:20px 0;}
-  header .wrap{display:flex;align-items:center;justify-content:space-between;}
-  .brand{font-size:17px;font-weight:700;color:var(--ink);}
-  .brand span{color:var(--accent);}
+  document.getElementById('compareVideoA').src = videoUrlDTL;
+  document.getElementById('compareVideoB').src = videoUrlFO;
 
-  section{padding:32px 0;}
-  .panel-card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:28px;}
-  .panel-card + .panel-card{margin-top:20px;}
+  setActiveView('dtl');
+  updateStudentContact();
+  reviewArea.classList.add('active');
+  reviewArea.scrollIntoView({ behavior: 'smooth' });
+});
 
-  .field{margin-bottom:16px;}
-  .field label{display:block;font-size:12.5px;font-weight:600;color:var(--text);margin-bottom:6px;}
-  .field input{width:100%;padding:11px 13px;border:1px solid var(--line-strong);border-radius:7px;font-size:14.5px;font-family:inherit;}
-  .field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,90,240,0.12);}
-  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
-  @media(max-width:700px){.row3{grid-template-columns:1fr;}}
+document.getElementById('resetToolBtn').addEventListener('click', function () {
+  reviewArea.classList.remove('active');
+  fileDTL.value = ''; fileFO.value = '';
+  chipDTL.innerHTML = ''; chipFO.innerHTML = '';
+  if (fileInfo) fileInfo.value = '';
+  if (chipInfo) chipInfo.innerHTML = '';
+  document.getElementById('stName').value = '';
+  document.getElementById('stEmail').value = '';
+  document.getElementById('stPhone').value = '';
+  document.getElementById('notesList').innerHTML = '';
+  document.getElementById('voiceNotesList').innerHTML = '';
+  resetAnalysisPlayer();
+  resetComparePlayer();
+  loadPanel.scrollIntoView({ behavior: 'smooth' });
+});
 
-  .upload-row{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px;}
-  @media(max-width:700px){.upload-row{grid-template-columns:1fr;}}
-  .upload-box{border:2px dashed var(--line-strong);border-radius:8px;padding:26px 16px;text-align:center;cursor:pointer;}
-  .upload-box:hover{border-color:var(--accent);background:rgba(79,90,240,0.03);}
-  .upload-box input{display:none;}
-  .upload-box .icon{font-size:22px;margin-bottom:6px;}
-  .upload-box .hint{font-size:12px;color:var(--dim);margin-top:3px;}
-  .file-chip{display:flex;align-items:center;gap:8px;background:var(--green-bg);color:var(--green);font-size:12.5px;padding:8px 12px;border-radius:6px;margin-top:8px;}
+// ---- View tabs (which video the single analysis player shows) ----
+var tabDTL = document.getElementById('tabDTL');
+var tabFO = document.getElementById('tabFO');
+var analysisVideo = document.getElementById('analysisVideo');
 
-  .btn{display:inline-block;background:var(--accent);color:#fff;border:none;border-radius:8px;padding:13px 22px;font-size:14.5px;font-weight:600;cursor:pointer;font-family:inherit;}
-  .btn:hover{background:var(--accent-dark);}
-  .btn:disabled{opacity:0.5;cursor:not-allowed;}
-  .btn-secondary{background:var(--bg);color:var(--text);border:1px solid var(--line-strong);}
-  .btn-secondary:hover{background:var(--line);}
-  .error-msg{font-size:12.5px;color:var(--red);margin-top:10px;display:none;}
-  .error-msg.show{display:block;}
+function setActiveView(view) {
+  activeView = view;
+  tabDTL.classList.toggle('active', view === 'dtl');
+  tabFO.classList.toggle('active', view === 'fo');
+  analysisVideo.pause();
+  analysisVideo.src = view === 'dtl' ? videoUrlDTL : videoUrlFO;
+  analysisVideo.classList.remove('flipped');
+  if (flipToggleBtn) flipToggleBtn.classList.remove('active');
+  clearStrokes();
+  resetPoseSmoothing();
+  document.getElementById('notesList').innerHTML = '';
+  setPlayLabel(false);
+}
+tabDTL.addEventListener('click', function () { setActiveView('dtl'); });
+tabFO.addEventListener('click', function () { setActiveView('fo'); });
 
-  #reviewArea{display:none;}
-  #reviewArea.active{display:block;}
+// ---- Element refs (analysis player) ----
+var panel1Dummy = null; // not used in this tool, kept for shared function signatures
+var dot1 = null, dot2 = null, dot3 = null;
+var payBtn = null, submitBtn = null, restartBtn = null;
+var videoInput = null, uploadBox = null, filePreviewSlot = null;
+var yourSwingThumb = null, yourSwingVideo = null, yourSwingSampleImg = null, yourSwingCaption = null;
+var analysisPlayBtn = document.getElementById('analysisPlayBtn');
+var playIconSvg = document.getElementById('playIconSvg');
+var playBtnLabel = document.getElementById('playBtnLabel');
+var stepBackBtn = document.getElementById('stepBackBtn');
+var stepFwdBtn = document.getElementById('stepFwdBtn');
+var speedBtns = document.querySelectorAll('.speed-btn');
+var scrubBar = document.getElementById('scrubBar');
+var scrubTime = document.getElementById('scrubTime');
+var notesList = document.getElementById('notesList');
+var analysisVideoWrap = document.getElementById('analysisVideoWrap');
+var drawCanvas = document.getElementById('drawCanvas');
+var drawCtx = drawCanvas ? drawCanvas.getContext('2d') : null;
+var drawToggleBtn = document.getElementById('drawToggleBtn');
+var flipToggleBtn = document.getElementById('flipToggleBtn');
+var poseToggleBtn = document.getElementById('poseToggleBtn');
+var poseCanvas = document.getElementById('poseCanvas');
+var poseCtx = poseCanvas ? poseCanvas.getContext('2d') : null;
+var guideToggleBtn = document.getElementById('guideToggleBtn');
+var guideV = document.getElementById('guideV');
+var guideH = document.getElementById('guideH');
+var exportFrameBtn = document.getElementById('exportFrameBtn');
+var drawToolbar = document.getElementById('drawToolbar');
+var toolBtns = document.querySelectorAll('.tool-btn');
+var colorSwatches = document.querySelectorAll('.color-swatch');
+var clearDrawBtn = document.getElementById('clearDrawBtn');
+var FRAME_STEP = 1 / 25;
+var drawMode = false;
+var currentTool = 'line';
+var currentColor = '#E0A526';
+var strokes = [];
+var activeStroke = null;
+var isDrawing = false;
+var anglePoints = [];
 
-  .view-tabs{display:flex;gap:4px;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:4px;margin-bottom:20px;width:fit-content;}
-  .view-tab{background:transparent;border:none;padding:9px 18px;font-size:13.5px;font-weight:600;border-radius:6px;cursor:pointer;color:var(--dim);font-family:inherit;}
-  .view-tab.active{background:var(--panel);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,0.06);}
+function showPanel() { /* single-player tool has no multi-panel flow; kept as no-op for shared code shape */ }
 
-  .analysis-video-wrap{position:relative;background:#000;border-radius:8px;overflow:hidden;max-width:520px;aspect-ratio:16/9;}
-  .analysis-video-wrap video{width:100%;height:100%;object-fit:contain;background:#000;display:block;transition:transform .15s;}
-  .analysis-video-wrap video.flipped{transform:scaleX(-1);}
-  #poseCanvas{position:absolute;top:0;left:0;pointer-events:none;}
-  #drawCanvas{position:absolute;top:0;left:0;pointer-events:none;touch-action:none;}
-  #drawCanvas.drawing-active{pointer-events:auto;cursor:crosshair;}
-  .guide-line{position:absolute;z-index:6;touch-action:none;}
-  .guide-v{top:0;bottom:0;width:16px;margin-left:-8px;cursor:ew-resize;display:flex;justify-content:center;}
-  .guide-v i{display:block;width:2px;height:100%;background:repeating-linear-gradient(to bottom,var(--mark) 0 6px,transparent 6px 12px);pointer-events:none;}
-  .guide-h{left:0;right:0;height:16px;margin-top:-8px;cursor:ns-resize;display:flex;align-items:center;}
-  .guide-h i{display:block;height:2px;width:100%;background:repeating-linear-gradient(to right,var(--mark) 0 6px,transparent 6px 12px);pointer-events:none;}
-  .guide-line.dragging i{background-color:var(--green);}
+function formatT(s) { return s.toFixed(1) + 's'; }
 
-  .controls{display:flex;align-items:center;gap:8px;margin-top:16px;flex-wrap:wrap;max-width:520px;}
-  .ctrl-btn{background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;padding:9px 13px;font-size:12.5px;cursor:pointer;font-family:inherit;color:var(--ink);display:inline-flex;align-items:center;gap:6px;}
-  .ctrl-btn:hover{border-color:var(--accent);}
-  .ctrl-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
-  .speed-group{display:flex;gap:3px;background:var(--bg);border:1px solid var(--line-strong);border-radius:6px;padding:3px;}
-  .speed-btn{background:transparent;border:none;padding:7px 10px;font-size:12px;border-radius:4px;cursor:pointer;color:var(--dim);font-family:inherit;}
-  .speed-btn.active{background:var(--accent);color:#fff;}
-  .scrub-row{display:flex;align-items:center;gap:12px;margin-top:14px;max-width:520px;}
-  .scrub-row input[type=range]{flex:1;accent-color:var(--mark);}
-  .scrub-time{font-size:12px;color:var(--dim);min-width:78px;text-align:right;font-variant-numeric:tabular-nums;}
+function setPlayLabel(isPlaying) {
+  playBtnLabel.textContent = isPlaying ? 'Pause' : 'Play';
+  playIconSvg.innerHTML = isPlaying
+    ? '<rect x="6" y="5" width="4" height="14" fill="#1A1D21"/><rect x="14" y="5" width="4" height="14" fill="#1A1D21"/>'
+    : '<path d="M8 5v14l11-7-11-7z" fill="#1A1D21"/>';
+}
 
-  .tool-group{display:flex;gap:3px;background:var(--panel);border:1px solid var(--line-strong);border-radius:6px;padding:3px;}
-  .tool-btn{background:transparent;border:none;padding:7px 11px;font-size:12px;border-radius:4px;cursor:pointer;color:var(--dim);font-family:inherit;}
-  .tool-btn.active{background:var(--accent);color:#fff;}
-  .color-group{display:flex;gap:6px;}
-  .color-swatch{width:20px;height:20px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0;}
-  .color-swatch.active{border-color:var(--ink);}
-  .draw-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px;max-width:520px;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:10px 14px;}
-  .draw-hint{font-size:11.5px;color:var(--dim);flex-basis:100%;}
+if (analysisPlayBtn) {
+  analysisPlayBtn.addEventListener('click', function () {
+    if (analysisVideo.paused) analysisVideo.play(); else analysisVideo.pause();
+  });
+}
+analysisVideo.addEventListener('play', function () { setPlayLabel(true); setDrawMode(false); clearStrokes(); });
+analysisVideo.addEventListener('pause', function () { setPlayLabel(false); });
+analysisVideo.addEventListener('ended', function () { setPlayLabel(false); });
+analysisVideo.addEventListener('loadedmetadata', function () { sizeDrawCanvas(); updateScrubUI(); });
+analysisVideo.addEventListener('timeupdate', updateScrubUI);
 
-  .notes-list{margin-top:20px;display:flex;flex-direction:column;gap:8px;max-width:560px;}
-  .note-item{display:flex;gap:10px;align-items:flex-start;background:var(--bg);border-left:3px solid var(--mark);border-radius:4px;padding:10px 14px;}
-  .note-item button.seek-note{background:none;border:1px solid var(--line-strong);border-radius:50%;width:26px;height:26px;cursor:pointer;flex-shrink:0;}
-  .note-item .ts{color:var(--mark-dark);font-weight:600;font-size:12px;min-width:34px;}
-  .note-item .note-text{font-size:13.5px;flex:1;}
-  .note-item .remove-note{border:none;background:none;color:var(--dim);font-size:16px;cursor:pointer;}
-  .add-note-row{display:flex;gap:8px;margin-top:14px;max-width:560px;}
-  .add-note-row input{flex:1;padding:10px 12px;border:1px solid var(--line-strong);border-radius:6px;font-family:inherit;font-size:13.5px;}
+function updateScrubUI() {
+  if (!analysisVideo.duration) return;
+  scrubBar.max = analysisVideo.duration;
+  scrubBar.value = analysisVideo.currentTime;
+  scrubTime.textContent = formatT(analysisVideo.currentTime) + ' / ' + formatT(analysisVideo.duration);
+  highlightActiveNote();
+}
 
-  .voice-note-tool{margin-top:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-  .voice-status{font-size:12.5px;color:var(--dim);}
-  .voice-status.recording{color:var(--red);font-weight:600;}
-  .ctrl-btn#voiceRecordBtn.active{background:var(--red);color:#fff;border-color:var(--red);}
-  .voice-note-item{display:flex;align-items:center;gap:10px;background:var(--bg);border-left:3px solid var(--accent);border-radius:4px;padding:9px 14px;margin-top:8px;max-width:560px;}
-  .voice-note-item .ts{color:var(--accent-dark);font-weight:600;font-size:12px;min-width:34px;}
-  .voice-play-btn{background:var(--panel);border:1px solid var(--line-strong);border-radius:50%;width:26px;height:26px;cursor:pointer;font-size:11px;}
-  .voice-note-label{font-size:12.5px;color:var(--dim);flex:1;}
-  .remove-voice{border:none;background:none;color:var(--dim);font-size:17px;cursor:pointer;}
+if (stepBackBtn) {
+  stepBackBtn.addEventListener('click', function () {
+    analysisVideo.pause();
+    analysisVideo.currentTime = Math.max(0, analysisVideo.currentTime - FRAME_STEP);
+    clearStrokes(); resetPoseSmoothing();
+  });
+}
+if (stepFwdBtn) {
+  stepFwdBtn.addEventListener('click', function () {
+    analysisVideo.pause();
+    var dur = analysisVideo.duration || 0;
+    analysisVideo.currentTime = Math.min(dur, analysisVideo.currentTime + FRAME_STEP);
+    clearStrokes(); resetPoseSmoothing();
+  });
+}
+speedBtns.forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    analysisVideo.playbackRate = parseFloat(btn.getAttribute('data-speed'));
+    speedBtns.forEach(function (b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+  });
+});
+if (scrubBar) {
+  scrubBar.addEventListener('input', function () {
+    analysisVideo.pause();
+    analysisVideo.currentTime = parseFloat(scrubBar.value);
+    clearStrokes(); resetPoseSmoothing();
+  });
+}
 
-  .compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;max-width:820px;}
-  .compare-col{display:flex;flex-direction:column;gap:8px;}
-  .compare-label{font-size:12px;color:var(--mark-dark);text-transform:uppercase;letter-spacing:0.03em;font-weight:700;display:flex;justify-content:space-between;align-items:center;}
-  .compare-wrap{max-width:none;aspect-ratio:16/9;}
-  @media(max-width:700px){.compare-grid{grid-template-columns:1fr;}}
+// ---- Drawing (line / freehand / angle) ----
+function sizeDrawCanvas() {
+  if (!drawCanvas || !analysisVideo.videoWidth) return;
+  var vw = analysisVideo.videoWidth, vh = analysisVideo.videoHeight;
+  var cw = analysisVideoWrap.clientWidth, ch = analysisVideoWrap.clientHeight;
+  var videoAspect = vw / vh, boxAspect = cw / ch;
+  var rw, rh, ox, oy;
+  if (videoAspect > boxAspect) { rw = cw; rh = cw / videoAspect; ox = 0; oy = (ch - rh) / 2; }
+  else { rh = ch; rw = ch * videoAspect; oy = 0; ox = (cw - rw) / 2; }
+  [drawCanvas, poseCanvas].forEach(function (c) {
+    if (!c) return;
+    c.style.width = rw + 'px'; c.style.height = rh + 'px';
+    c.style.left = ox + 'px'; c.style.top = oy + 'px';
+    c.width = rw; c.height = rh;
+  });
+  redrawStrokes();
+}
+window.addEventListener('resize', sizeDrawCanvas);
 
-  .send-back-block{margin-top:18px;padding-top:18px;border-top:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-  .student-contact{font-size:13px;color:var(--dim);flex-basis:100%;}
-  .student-contact strong{color:var(--ink);font-weight:600;}
-</style>
-</head>
-<body>
+function redrawStrokes() {
+  if (!drawCtx) return;
+  drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+  strokes.forEach(paintStroke);
+  if (activeStroke) paintStroke(activeStroke);
+  if (currentTool === 'angle' && anglePoints.length > 0) {
+    drawCtx.fillStyle = currentColor;
+    anglePoints.forEach(function (p) { drawCtx.beginPath(); drawCtx.arc(p.x, p.y, 4, 0, Math.PI * 2); drawCtx.fill(); });
+    if (anglePoints.length === 2) {
+      drawCtx.strokeStyle = currentColor; drawCtx.lineWidth = 3;
+      drawCtx.beginPath(); drawCtx.moveTo(anglePoints[0].x, anglePoints[0].y); drawCtx.lineTo(anglePoints[1].x, anglePoints[1].y); drawCtx.stroke();
+    }
+  }
+}
 
-<header>
-  <div class="wrap">
-    <div class="brand">Swing<span>Review</span> Tool</div>
-    <div style="font-size:12.5px;color:var(--dim);">For coaches — private use</div>
-  </div>
-</header>
+function paintStroke(s) {
+  drawCtx.strokeStyle = s.color; drawCtx.lineWidth = 3; drawCtx.lineCap = 'round'; drawCtx.lineJoin = 'round';
+  if (s.tool === 'line') {
+    drawCtx.beginPath(); drawCtx.moveTo(s.x1, s.y1); drawCtx.lineTo(s.x2, s.y2); drawCtx.stroke();
+  } else if (s.tool === 'angle') {
+    var p0 = s.points[0], v = s.points[1], p2 = s.points[2];
+    drawCtx.beginPath(); drawCtx.moveTo(v.x, v.y); drawCtx.lineTo(p0.x, p0.y); drawCtx.stroke();
+    drawCtx.beginPath(); drawCtx.moveTo(v.x, v.y); drawCtx.lineTo(p2.x, p2.y); drawCtx.stroke();
+    drawCtx.fillStyle = s.color; drawCtx.beginPath(); drawCtx.arc(v.x, v.y, 4, 0, Math.PI * 2); drawCtx.fill();
+    var v1 = { x: p0.x - v.x, y: p0.y - v.y }, v2 = { x: p2.x - v.x, y: p2.y - v.y };
+    var m1 = Math.hypot(v1.x, v1.y), m2 = Math.hypot(v2.x, v2.y);
+    var deg = 0;
+    if (m1 > 0 && m2 > 0) {
+      var cosA = Math.max(-1, Math.min(1, (v1.x * v2.x + v1.y * v2.y) / (m1 * m2)));
+      deg = Math.round(Math.acos(cosA) * 180 / Math.PI);
+    }
+    drawCtx.font = 'bold 15px Inter, sans-serif';
+    drawCtx.fillStyle = '#1A1D21'; drawCtx.fillText(deg + '°', v.x + 10, v.y - 10);
+    drawCtx.fillStyle = s.color; drawCtx.fillText(deg + '°', v.x + 9, v.y - 11);
+  } else {
+    if (s.points.length < 2) return;
+    drawCtx.beginPath(); drawCtx.moveTo(s.points[0].x, s.points[0].y);
+    for (var i = 1; i < s.points.length; i++) drawCtx.lineTo(s.points[i].x, s.points[i].y);
+    drawCtx.stroke();
+  }
+}
 
-<section>
-  <div class="wrap" style="max-width:820px;">
+function clearStrokes() {
+  strokes = []; activeStroke = null; anglePoints = [];
+  if (drawCtx) drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+}
 
-    <!-- STEP 1: Load videos -->
-    <div class="panel-card" id="loadPanel">
-      <h3 style="margin-bottom:6px;">Load a student's swing</h3>
-      <p style="margin-bottom:20px;">Choose the two video files from your computer (downloaded from your Drive submissions folder). Nothing is uploaded anywhere — this all runs locally in your browser.</p>
+function getCanvasPoint(evt) {
+  var rect = drawCanvas.getBoundingClientRect();
+  return { x: evt.clientX - rect.left, y: evt.clientY - rect.top };
+}
 
-      <div class="upload-row">
-        <div>
-          <label class="upload-box" for="fileDTL">
-            <input type="file" id="fileDTL" accept="video/*">
-            <div class="icon">🎥</div>
-            <div>Down-the-Line video</div>
-            <div class="hint">Tap to choose a file</div>
-          </label>
-          <div id="chipDTL"></div>
-        </div>
-        <div>
-          <label class="upload-box" for="fileFO">
-            <input type="file" id="fileFO" accept="video/*">
-            <div class="icon">🎥</div>
-            <div>Face-On video</div>
-            <div class="hint">Tap to choose a file</div>
-          </label>
-          <div id="chipFO"></div>
-        </div>
-      </div>
+function setDrawMode(on) {
+  drawMode = on; anglePoints = [];
+  if (drawToggleBtn) drawToggleBtn.classList.toggle('active', on);
+  if (drawToolbar) drawToolbar.style.display = on ? 'flex' : 'none';
+  if (drawCanvas) drawCanvas.classList.toggle('drawing-active', on);
+  if (on) { analysisVideo.pause(); sizeDrawCanvas(); }
+}
+if (drawToggleBtn) drawToggleBtn.addEventListener('click', function () { setDrawMode(!drawMode); });
 
-      <div class="row3">
-        <div class="field"><label for="stName">Student name</label><input id="stName" type="text" placeholder="From your Sheet"></div>
-        <div class="field"><label for="stEmail">Email</label><input id="stEmail" type="email" placeholder="From your Sheet"></div>
-        <div class="field"><label for="stPhone">Phone</label><input id="stPhone" type="tel" placeholder="From your Sheet"></div>
-      </div>
+if (drawCanvas) {
+  drawCanvas.addEventListener('pointerdown', function (evt) {
+    if (!drawMode) return;
+    var p = getCanvasPoint(evt);
+    if (currentTool === 'angle') {
+      anglePoints.push(p);
+      if (anglePoints.length === 3) { strokes.push({ tool: 'angle', color: currentColor, points: anglePoints.slice() }); anglePoints = []; }
+      redrawStrokes(); return;
+    }
+    isDrawing = true;
+    activeStroke = currentTool === 'line'
+      ? { tool: 'line', color: currentColor, x1: p.x, y1: p.y, x2: p.x, y2: p.y }
+      : { tool: 'freehand', color: currentColor, points: [p] };
+    drawCanvas.setPointerCapture(evt.pointerId);
+  });
+  drawCanvas.addEventListener('pointermove', function (evt) {
+    if (!drawMode || !isDrawing || !activeStroke) return;
+    var p = getCanvasPoint(evt);
+    if (currentTool === 'line') { activeStroke.x2 = p.x; activeStroke.y2 = p.y; } else { activeStroke.points.push(p); }
+    redrawStrokes();
+  });
+  function endStroke() { if (!isDrawing) return; isDrawing = false; if (activeStroke) { strokes.push(activeStroke); activeStroke = null; } redrawStrokes(); }
+  drawCanvas.addEventListener('pointerup', endStroke);
+  drawCanvas.addEventListener('pointerleave', endStroke);
+}
+toolBtns.forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    currentTool = btn.getAttribute('data-tool');
+    toolBtns.forEach(function (b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    anglePoints = []; redrawStrokes();
+  });
+});
+colorSwatches.forEach(function (btn) {
+  btn.addEventListener('click', function () {
+    currentColor = btn.getAttribute('data-color');
+    colorSwatches.forEach(function (b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+  });
+});
+if (clearDrawBtn) clearDrawBtn.addEventListener('click', clearStrokes);
 
-      <button class="btn" id="startReviewBtn" type="button">Start Review</button>
-      <div class="error-msg" id="loadError">Please choose both videos first.</div>
-    </div>
+// ---- Flip ----
+if (flipToggleBtn) {
+  flipToggleBtn.addEventListener('click', function () {
+    if (drawMode) { setDrawMode(false); clearStrokes(); }
+    if (poseActive) stopPoseOverlay();
+    analysisVideo.classList.toggle('flipped');
+    flipToggleBtn.classList.toggle('active');
+  });
+}
 
-    <!-- STEP 2: Review area -->
-    <div id="reviewArea">
+// ---- Guide lines ----
+function makeGuideDraggable(el, axis) {
+  var dragging = false;
+  el.addEventListener('pointerdown', function (evt) { dragging = true; el.classList.add('dragging'); el.setPointerCapture(evt.pointerId); });
+  el.addEventListener('pointermove', function (evt) {
+    if (!dragging) return;
+    var rect = analysisVideoWrap.getBoundingClientRect();
+    if (axis === 'x') { var pct = ((evt.clientX - rect.left) / rect.width) * 100; el.style.left = Math.max(0, Math.min(100, pct)) + '%'; }
+    else { var pctY = ((evt.clientY - rect.top) / rect.height) * 100; el.style.top = Math.max(0, Math.min(100, pctY)) + '%'; }
+  });
+  function endDrag() { dragging = false; el.classList.remove('dragging'); }
+  el.addEventListener('pointerup', endDrag); el.addEventListener('pointercancel', endDrag);
+}
+if (guideV) makeGuideDraggable(guideV, 'x');
+if (guideH) makeGuideDraggable(guideH, 'y');
+if (guideToggleBtn) {
+  guideToggleBtn.addEventListener('click', function () {
+    var showing = guideV.style.display !== 'none';
+    guideV.style.display = showing ? 'none' : 'block';
+    guideH.style.display = showing ? 'none' : 'block';
+    guideToggleBtn.classList.toggle('active', !showing);
+  });
+}
 
-      <div class="panel-card">
-        <h4 style="margin-bottom:14px;">Swing Analysis</h4>
+// ---- AI Pose Overlay ----
+var poseDetector = null, poseActive = false, poseLoopHandle = null, poseLoading = false;
+var POSE_CONNECTIONS = [
+  ['left_shoulder', 'right_shoulder'], ['left_shoulder', 'left_elbow'], ['left_elbow', 'left_wrist'],
+  ['right_shoulder', 'right_elbow'], ['right_elbow', 'right_wrist'],
+  ['left_shoulder', 'left_hip'], ['right_shoulder', 'right_hip'], ['left_hip', 'right_hip'],
+  ['left_hip', 'left_knee'], ['left_knee', 'left_ankle'], ['right_hip', 'right_knee'], ['right_knee', 'right_ankle']
+];
+async function ensurePoseDetector() {
+  if (poseDetector) return poseDetector;
+  await tf.ready();
+  poseDetector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, { modelType: poseDetection.movenet.modelType.SINGLEPOSE_THUNDER });
+  return poseDetector;
+}
+var smoothedKeypoints = {};
+var SMOOTHING = 0.25;
+function smoothKeypoints(raw) {
+  raw.forEach(function (kp) {
+    var prev = smoothedKeypoints[kp.name];
+    if (!prev) smoothedKeypoints[kp.name] = { x: kp.x, y: kp.y, score: kp.score };
+    else {
+      var alpha = Math.max(0.04, SMOOTHING * kp.score);
+      prev.x += (kp.x - prev.x) * alpha; prev.y += (kp.y - prev.y) * alpha; prev.score += (kp.score - prev.score) * 0.3;
+    }
+  });
+  return Object.keys(smoothedKeypoints).map(function (n) { var k = smoothedKeypoints[n]; return { name: n, x: k.x, y: k.y, score: k.score }; });
+}
+function resetPoseSmoothing() { smoothedKeypoints = {}; }
+function drawSkeleton(keypoints) {
+  if (!poseCtx) return;
+  poseCtx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
+  var vw = analysisVideo.videoWidth, vh = analysisVideo.videoHeight;
+  if (!vw || !vh) return;
+  var sx = poseCanvas.width / vw, sy = poseCanvas.height / vh;
+  var byName = {}; keypoints.forEach(function (kp) { byName[kp.name] = kp; });
+  poseCtx.strokeStyle = '#39E58C'; poseCtx.lineWidth = 3;
+  POSE_CONNECTIONS.forEach(function (pair) {
+    var a = byName[pair[0]], b = byName[pair[1]];
+    if (a && b && a.score > 0.25 && b.score > 0.25) { poseCtx.beginPath(); poseCtx.moveTo(a.x * sx, a.y * sy); poseCtx.lineTo(b.x * sx, b.y * sy); poseCtx.stroke(); }
+  });
+  poseCtx.fillStyle = '#E0A526';
+  keypoints.forEach(function (kp) { if (kp.score > 0.25) { poseCtx.beginPath(); poseCtx.arc(kp.x * sx, kp.y * sy, 4, 0, Math.PI * 2); poseCtx.fill(); } });
+}
+async function poseLoop() {
+  if (!poseActive || !poseDetector) return;
+  try {
+    var poses = await poseDetector.estimatePoses(analysisVideo, { flipHorizontal: false });
+    if (poses && poses[0]) drawSkeleton(smoothKeypoints(poses[0].keypoints));
+    else if (poseCtx) poseCtx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
+  } catch (e) {}
+  poseLoopHandle = requestAnimationFrame(poseLoop);
+}
+function stopPoseOverlay() {
+  poseActive = false; resetPoseSmoothing();
+  if (poseLoopHandle) cancelAnimationFrame(poseLoopHandle);
+  if (poseCtx) poseCtx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
+  if (poseToggleBtn) { poseToggleBtn.classList.remove('active'); poseToggleBtn.textContent = '🦴 AI Pose'; }
+}
+if (poseToggleBtn) {
+  poseToggleBtn.addEventListener('click', async function () {
+    if (poseLoading) return;
+    if (poseActive) { stopPoseOverlay(); return; }
+    if (drawMode) { setDrawMode(false); clearStrokes(); }
+    if (analysisVideo.classList.contains('flipped')) { analysisVideo.classList.remove('flipped'); if (flipToggleBtn) flipToggleBtn.classList.remove('active'); }
+    poseLoading = true; poseToggleBtn.classList.add('loading'); poseToggleBtn.textContent = 'Loading model…';
+    try {
+      await ensurePoseDetector(); sizeDrawCanvas();
+      poseActive = true; poseToggleBtn.classList.add('active'); poseToggleBtn.textContent = '🦴 Hide Pose'; poseLoop();
+    } catch (e) {
+      poseToggleBtn.textContent = "Couldn't load model";
+      setTimeout(function () { poseToggleBtn.textContent = '🦴 AI Pose'; }, 2500);
+    }
+    poseLoading = false; poseToggleBtn.classList.remove('loading');
+  });
+}
 
-        <div class="view-tabs">
-          <button class="view-tab active" id="tabDTL" type="button">Down-the-Line</button>
-          <button class="view-tab" id="tabFO" type="button">Face-On</button>
-        </div>
+// ---- Export frame ----
+if (exportFrameBtn) {
+  exportFrameBtn.addEventListener('click', function () {
+    var vw = analysisVideo.videoWidth, vh = analysisVideo.videoHeight;
+    if (!vw || !vh) return;
+    var out = document.createElement('canvas'); out.width = vw; out.height = vh;
+    var octx = out.getContext('2d');
+    octx.drawImage(analysisVideo, 0, 0, vw, vh);
+    if (drawCanvas.width) octx.drawImage(drawCanvas, 0, 0, drawCanvas.width, drawCanvas.height, 0, 0, vw, vh);
+    if (poseActive && poseCanvas.width) octx.drawImage(poseCanvas, 0, 0, poseCanvas.width, poseCanvas.height, 0, 0, vw, vh);
+    var link = document.createElement('a');
+    link.download = 'swing-breakdown-' + activeView + '.png';
+    link.href = out.toDataURL('image/png');
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+  });
+}
 
-        <div class="analysis-video-wrap" id="analysisVideoWrap">
-          <video id="analysisVideo" playsinline muted preload="metadata"></video>
-          <canvas id="poseCanvas"></canvas>
-          <canvas id="drawCanvas"></canvas>
-          <div class="guide-line guide-v" id="guideV" style="display:none;left:50%;"><i></i></div>
-          <div class="guide-line guide-h" id="guideH" style="display:none;top:70%;"><i></i></div>
-        </div>
+// ---- Dynamic text notes (coach types them in, tied to current timestamp) ----
+var noteCounter = 0;
+function addTextNote(text, atTime) {
+  noteCounter++;
+  var item = document.createElement('div');
+  item.className = 'note-item';
+  item.innerHTML =
+    '<button class="seek-note" type="button">▶</button>' +
+    '<span class="ts">' + formatT(atTime) + '</span>' +
+    '<span class="note-text">' + text.replace(/</g, '&lt;') + '</span>' +
+    '<button class="remove-note" type="button">&times;</button>';
+  item.dataset.t = atTime;
+  notesList.appendChild(item);
+  item.querySelector('.seek-note').addEventListener('click', function () {
+    analysisVideo.currentTime = atTime; resetPoseSmoothing(); analysisVideo.play();
+  });
+  item.querySelector('.remove-note').addEventListener('click', function () { notesList.removeChild(item); });
+}
+document.getElementById('addNoteBtn').addEventListener('click', function () {
+  var input = document.getElementById('newNoteText');
+  var text = input.value.trim();
+  if (!text) return;
+  addTextNote(text, analysisVideo.currentTime);
+  input.value = '';
+});
+function highlightActiveNote() {
+  var t = analysisVideo.currentTime;
+  Array.prototype.forEach.call(notesList.children, function (item) {
+    var bt = parseFloat(item.dataset.t);
+    item.style.borderLeftColor = Math.abs(t - bt) < 0.15 ? '#12805C' : '#E0A526';
+  });
+}
 
-        <div class="controls">
-          <button class="ctrl-btn" id="analysisPlayBtn" type="button">
-            <svg id="playIconSvg" width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7-11-7z" fill="#1A1D21"/></svg>
-            <span id="playBtnLabel">Play</span>
-          </button>
-          <button class="ctrl-btn" id="stepBackBtn" type="button">&#10094; Frame</button>
-          <button class="ctrl-btn" id="stepFwdBtn" type="button">Frame &#10095;</button>
-          <div class="speed-group">
-            <button class="speed-btn" data-speed="0.25" type="button">0.25x</button>
-            <button class="speed-btn" data-speed="0.5" type="button">0.5x</button>
-            <button class="speed-btn active" data-speed="1" type="button">1x</button>
-          </div>
-          <button class="ctrl-btn" id="drawToggleBtn" type="button">✏️ Draw</button>
-          <button class="ctrl-btn" id="flipToggleBtn" type="button">&#8646; Flip</button>
-          <button class="ctrl-btn" id="poseToggleBtn" type="button">🦴 AI Pose</button>
-          <button class="ctrl-btn" id="guideToggleBtn" type="button">📐 Guides</button>
-          <button class="ctrl-btn" id="exportFrameBtn" type="button">📸 Save Frame</button>
-        </div>
+// ---- Voice notes ----
+var voiceRecordBtn = document.getElementById('voiceRecordBtn');
+var voiceStatus = document.getElementById('voiceStatus');
+var voiceNotesList = document.getElementById('voiceNotesList');
+var activeMediaRecorder = null, recordedChunks = [], isRecording = false;
+var recordStartMs = 0, recordStartVideoTime = 0, recordTimerHandle = null, voiceNoteCounter = 0, activeStream = null;
 
-        <div class="draw-toolbar" id="drawToolbar" style="display:none;">
-          <div class="tool-group">
-            <button class="tool-btn active" data-tool="line" type="button">Line</button>
-            <button class="tool-btn" data-tool="freehand" type="button">Freehand</button>
-            <button class="tool-btn" data-tool="angle" type="button">Angle</button>
-          </div>
-          <div class="color-group">
-            <button class="color-swatch active" data-color="#E0A526" style="background:#E0A526" type="button"></button>
-            <button class="color-swatch" data-color="#E5484D" style="background:#E5484D" type="button"></button>
-            <button class="color-swatch" data-color="#4C9AFF" style="background:#4C9AFF" type="button"></button>
-            <button class="color-swatch" data-color="#FFFFFF" style="background:#FFFFFF;border:1px solid #ccc;" type="button"></button>
-          </div>
-          <button class="ctrl-btn" id="clearDrawBtn" type="button">Clear</button>
-          <span class="draw-hint">Line/Freehand: drag. Angle: click 3 points. Switching frames or tabs clears it.</span>
-        </div>
+async function startVoiceRecording() {
+  try { activeStream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+  catch (e) { voiceStatus.textContent = "Couldn't access the microphone."; return; }
+  recordedChunks = [];
+  try { activeMediaRecorder = new MediaRecorder(activeStream); }
+  catch (e) { voiceStatus.textContent = 'Voice recording not supported here.'; activeStream.getTracks().forEach(function (t) { t.stop(); }); return; }
+  activeMediaRecorder.addEventListener('dataavailable', function (e) { if (e.data && e.data.size > 0) recordedChunks.push(e.data); });
+  activeMediaRecorder.addEventListener('stop', function () {
+    var blob = new Blob(recordedChunks, { type: 'audio/webm' });
+    addVoiceNote(URL.createObjectURL(blob), recordStartVideoTime);
+    activeStream.getTracks().forEach(function (t) { t.stop(); });
+  });
+  recordStartVideoTime = analysisVideo.currentTime; recordStartMs = Date.now();
+  activeMediaRecorder.start(); isRecording = true;
+  voiceRecordBtn.textContent = '⏹ Stop Recording'; voiceRecordBtn.classList.add('active'); voiceStatus.classList.add('recording');
+  recordTimerHandle = setInterval(function () { voiceStatus.textContent = '● Recording… ' + Math.floor((Date.now() - recordStartMs) / 1000) + 's'; }, 250);
+}
+function stopVoiceRecording() {
+  if (activeMediaRecorder && isRecording) activeMediaRecorder.stop();
+  isRecording = false; clearInterval(recordTimerHandle);
+  voiceRecordBtn.textContent = '🎙️ Record Voice Note'; voiceRecordBtn.classList.remove('active'); voiceStatus.classList.remove('recording'); voiceStatus.textContent = '';
+}
+function addVoiceNote(url, atTime) {
+  voiceNoteCounter++;
+  var item = document.createElement('div'); item.className = 'voice-note-item';
+  item.innerHTML =
+    '<span class="ts">' + formatT(atTime) + '</span>' +
+    '<button class="voice-play-btn" type="button">▶</button>' +
+    '<audio class="voice-audio" src="' + url + '"></audio>' +
+    '<span class="voice-note-label">Voice note ' + voiceNoteCounter + '</span>' +
+    '<button class="remove-voice" type="button">&times;</button>';
+  voiceNotesList.appendChild(item);
+  var audioEl = item.querySelector('.voice-audio'), playBtn = item.querySelector('.voice-play-btn');
+  playBtn.addEventListener('click', function () { analysisVideo.currentTime = atTime; resetPoseSmoothing(); audioEl.currentTime = 0; audioEl.play(); analysisVideo.play(); });
+  item.querySelector('.remove-voice').addEventListener('click', function () { audioEl.pause(); URL.revokeObjectURL(url); voiceNotesList.removeChild(item); });
+}
+if (voiceRecordBtn) voiceRecordBtn.addEventListener('click', function () { if (isRecording) stopVoiceRecording(); else startVoiceRecording(); });
 
-        <div class="scrub-row">
-          <input type="range" id="scrubBar" min="0" max="1" step="0.01" value="0">
-          <span class="scrub-time" id="scrubTime">0.0s / 0.0s</span>
-        </div>
+// ---- Email / Call student ----
+var emailStudentBtn = document.getElementById('emailStudentBtn');
+var emailStatus = document.getElementById('emailStatus');
+var callStudentBtn = document.getElementById('callStudentBtn');
+var studentContact = document.getElementById('studentContact');
 
-        <div class="notes-list" id="notesList"></div>
-        <div class="add-note-row">
-          <input type="text" id="newNoteText" placeholder="Type a note about this exact moment…">
-          <button class="btn btn-secondary" id="addNoteBtn" type="button">Add at current time</button>
-        </div>
+function updateStudentContact() {
+  var name = document.getElementById('stName').value || '';
+  var email = document.getElementById('stEmail').value || '';
+  var phone = document.getElementById('stPhone').value || '';
+  var parts = [];
+  if (name) parts.push('<strong>' + name.trim() + '</strong>');
+  if (email) parts.push(email.trim());
+  if (phone) parts.push(phone.trim());
+  studentContact.innerHTML = parts.join(' &nbsp;·&nbsp; ');
+}
 
-        <div class="voice-note-tool">
-          <button class="ctrl-btn" id="voiceRecordBtn" type="button">🎙️ Record Voice Note</button>
-          <span class="voice-status" id="voiceStatus"></span>
-        </div>
-        <div id="voiceNotesList"></div>
+if (emailStudentBtn) {
+  emailStudentBtn.addEventListener('click', function () {
+    var name = document.getElementById('stName').value.trim();
+    var email = document.getElementById('stEmail').value.trim();
+    if (!email) { emailStatus.textContent = 'No student email on file.'; return; }
+    var subject = 'Your swing breakdown';
+    var body = 'Hi ' + (name || 'there') + ',\n\nThanks for sending in your swing -- here is your personal breakdown:\n\n[Paste your recording link here]\n\nLet me know if you have any questions.\n';
+    window.location.href = 'mailto:' + encodeURIComponent(email) + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+    emailStatus.textContent = 'Opening your email app…';
+  });
+}
+if (callStudentBtn) {
+  callStudentBtn.addEventListener('click', function () {
+    var phone = document.getElementById('stPhone').value.trim();
+    if (!phone) { emailStatus.textContent = 'No phone number on file.'; return; }
+    window.location.href = 'tel:' + phone.replace(/[^\d+]/g, '');
+  });
+}
 
-        <div class="send-back-block">
-          <div class="student-contact" id="studentContact"></div>
-          <button class="ctrl-btn" id="emailStudentBtn" type="button">✉️ Email Student</button>
-          <button class="ctrl-btn" id="callStudentBtn" type="button">📞 Call Student</button>
-          <span class="voice-status" id="emailStatus"></span>
-        </div>
-      </div>
+function resetAnalysisPlayer() {
+  analysisVideo.pause(); analysisVideo.removeAttribute('src'); analysisVideo.currentTime = 0; analysisVideo.playbackRate = 1;
+  speedBtns.forEach(function (b) { b.classList.remove('active'); });
+  var oneX = document.querySelector('.speed-btn[data-speed="1"]'); if (oneX) oneX.classList.add('active');
+  setPlayLabel(false); setDrawMode(false); clearStrokes();
+  analysisVideo.classList.remove('flipped'); if (flipToggleBtn) flipToggleBtn.classList.remove('active');
+  stopPoseOverlay();
+  guideV.style.display = 'none'; guideH.style.display = 'none'; guideV.style.left = '50%'; guideH.style.top = '70%';
+  if (guideToggleBtn) guideToggleBtn.classList.remove('active');
+}
 
-      <div class="panel-card">
-        <h4 style="margin-bottom:6px;">Side-by-Side Comparison</h4>
-        <p style="margin-bottom:18px;">Both angles, playing in perfect sync.</p>
+// ====================================================================
+// SIDE-BY-SIDE COMPARISON
+// ====================================================================
+var compareVideoA = document.getElementById('compareVideoA');
+var compareVideoB = document.getElementById('compareVideoB');
+var comparePlayBtn = document.getElementById('comparePlayBtn');
+var comparePlayIconSvg = document.getElementById('comparePlayIconSvg');
+var comparePlayLabel = document.getElementById('comparePlayLabel');
+var compareStepBackBtn = document.getElementById('compareStepBackBtn');
+var compareStepFwdBtn = document.getElementById('compareStepFwdBtn');
+var compareScrubBar = document.getElementById('compareScrubBar');
+var compareScrubTime = document.getElementById('compareScrubTime');
+var flipCompareABtn = document.getElementById('flipCompareABtn');
+var flipCompareBBtn = document.getElementById('flipCompareBBtn');
 
-        <div class="compare-grid">
-          <div class="compare-col">
-            <div class="compare-label">Down-the-Line <button class="ctrl-btn" id="flipCompareABtn" type="button" style="padding:4px 8px;">&#8646;</button></div>
-            <div class="analysis-video-wrap compare-wrap"><video id="compareVideoA" playsinline muted preload="metadata"></video></div>
-          </div>
-          <div class="compare-col">
-            <div class="compare-label">Face-On <button class="ctrl-btn" id="flipCompareBBtn" type="button" style="padding:4px 8px;">&#8646;</button></div>
-            <div class="analysis-video-wrap compare-wrap"><video id="compareVideoB" playsinline muted preload="metadata"></video></div>
-          </div>
-        </div>
+function setComparePlayLabel(isPlaying) {
+  comparePlayLabel.textContent = isPlaying ? 'Pause both' : 'Play both';
+  comparePlayIconSvg.innerHTML = isPlaying
+    ? '<rect x="6" y="5" width="4" height="14" fill="#1A1D21"/><rect x="14" y="5" width="4" height="14" fill="#1A1D21"/>'
+    : '<path d="M8 5v14l11-7-11-7z" fill="#1A1D21"/>';
+}
+function updateCompareScrubUI() {
+  if (!compareVideoA.duration) return;
+  compareScrubBar.max = compareVideoA.duration; compareScrubBar.value = compareVideoA.currentTime;
+  compareScrubTime.textContent = formatT(compareVideoA.currentTime) + ' / ' + formatT(compareVideoA.duration);
+}
+compareVideoA.addEventListener('loadedmetadata', updateCompareScrubUI);
+compareVideoA.addEventListener('timeupdate', function () {
+  updateCompareScrubUI();
+  if (Math.abs(compareVideoB.currentTime - compareVideoA.currentTime) > 0.08) compareVideoB.currentTime = compareVideoA.currentTime;
+});
+compareVideoA.addEventListener('play', function () { compareVideoB.play(); setComparePlayLabel(true); });
+compareVideoA.addEventListener('pause', function () { compareVideoB.pause(); setComparePlayLabel(false); });
+compareVideoA.addEventListener('ended', function () { compareVideoB.pause(); setComparePlayLabel(false); });
+if (comparePlayBtn) comparePlayBtn.addEventListener('click', function () { if (compareVideoA.paused) compareVideoA.play(); else compareVideoA.pause(); });
+if (compareStepBackBtn) compareStepBackBtn.addEventListener('click', function () { compareVideoA.pause(); var t = Math.max(0, compareVideoA.currentTime - FRAME_STEP); compareVideoA.currentTime = t; compareVideoB.currentTime = t; });
+if (compareStepFwdBtn) compareStepFwdBtn.addEventListener('click', function () { compareVideoA.pause(); var dur = compareVideoA.duration || 0; var t = Math.min(dur, compareVideoA.currentTime + FRAME_STEP); compareVideoA.currentTime = t; compareVideoB.currentTime = t; });
+if (compareScrubBar) compareScrubBar.addEventListener('input', function () { compareVideoA.pause(); var t = parseFloat(compareScrubBar.value); compareVideoA.currentTime = t; compareVideoB.currentTime = t; });
+if (flipCompareABtn) flipCompareABtn.addEventListener('click', function () { compareVideoA.classList.toggle('flipped'); });
+if (flipCompareBBtn) flipCompareBBtn.addEventListener('click', function () { compareVideoB.classList.toggle('flipped'); });
 
-        <div class="controls">
-          <button class="ctrl-btn" id="comparePlayBtn" type="button">
-            <svg id="comparePlayIconSvg" width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 5v14l11-7-11-7z" fill="#1A1D21"/></svg>
-            <span id="comparePlayLabel">Play both</span>
-          </button>
-          <button class="ctrl-btn" id="compareStepBackBtn" type="button">&#10094; Frame</button>
-          <button class="ctrl-btn" id="compareStepFwdBtn" type="button">Frame &#10095;</button>
-        </div>
-
-        <div class="scrub-row">
-          <input type="range" id="compareScrubBar" min="0" max="1" step="0.01" value="0">
-          <span class="scrub-time" id="compareScrubTime">0.0s / 0.0s</span>
-        </div>
-      </div>
-
-      <div style="margin-top:20px;">
-        <button class="btn btn-secondary" id="resetToolBtn" type="button">Load a Different Student</button>
-      </div>
-
-    </div>
-  </div>
-</section>
-
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
-<script src="review-tool.js"></script>
-</body>
-</html>
+function resetComparePlayer() {
+  compareVideoA.pause(); compareVideoB.pause();
+  compareVideoA.removeAttribute('src'); compareVideoB.removeAttribute('src');
+  compareVideoA.classList.remove('flipped'); compareVideoB.classList.remove('flipped');
+  setComparePlayLabel(false);
+}
