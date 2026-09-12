@@ -66,18 +66,17 @@ if (fileInfo) {
   });
 }
 
-startReviewBtn.addEventListener('click', function () {
-  var dtl = fileDTL.files && fileDTL.files[0];
-  var fo = fileFO.files && fileFO.files[0];
-  if (!dtl || !fo) {
-    loadError.classList.add('show');
-    return;
-  }
-  loadError.classList.remove('show');
+/**
+ * Opens the review area on two already-created object URLs.
+ * Split out of the Start Review click handler so the auto-load path
+ * (see "Auto-load from an emailed link" at the bottom of this file)
+ * can reuse exactly the same startup sequence.
+ */
+function beginReview(dtlUrl, foUrl) {
   if (videoUrlDTL) URL.revokeObjectURL(videoUrlDTL);
   if (videoUrlFO) URL.revokeObjectURL(videoUrlFO);
-  videoUrlDTL = URL.createObjectURL(dtl);
-  videoUrlFO = URL.createObjectURL(fo);
+  videoUrlDTL = dtlUrl;
+  videoUrlFO = foUrl;
 
   document.getElementById('compareVideoA').src = videoUrlDTL;
   document.getElementById('compareVideoB').src = videoUrlFO;
@@ -86,6 +85,17 @@ startReviewBtn.addEventListener('click', function () {
   updateStudentContact();
   reviewArea.classList.add('active');
   reviewArea.scrollIntoView({ behavior: 'smooth' });
+}
+
+startReviewBtn.addEventListener('click', function () {
+  var dtl = fileDTL.files && fileDTL.files[0];
+  var fo = fileFO.files && fileFO.files[0];
+  if (!dtl || !fo) {
+    loadError.classList.add('show');
+    return;
+  }
+  loadError.classList.remove('show');
+  beginReview(URL.createObjectURL(dtl), URL.createObjectURL(fo));
 });
 
 document.getElementById('resetToolBtn').addEventListener('click', function () {
@@ -646,3 +656,87 @@ function resetComparePlayer() {
   compareVideoA.classList.remove('flipped'); compareVideoB.classList.remove('flipped');
   setComparePlayLabel(false);
 }
+
+
+// ====================================================================
+// Auto-load from an emailed link
+// --------------------------------------------------------------------
+// The pro's "new submission" email links here with ?id=<prefix>, where
+// the prefix is the shared filename stem the intake script generated,
+// e.g. 2026-09-12_1223_Jack_McCarthy
+//
+// This fetches the student's details and both videos from the Apps
+// Script, turns the videos into local blobs, and opens the review
+// straight away -- no downloading from Drive, no picking files.
+//
+// The videos deliberately come back as bytes rather than as Drive URLs.
+// Pointing a <video> at a cross-origin URL taints the canvas, which
+// would silently break the pose overlay and Save Frame.
+// ====================================================================
+
+var REVIEW_API_URL = 'https://script.google.com/macros/s/AKfycbzXeuGQuR0KPa4cU7oDmA9vOwnL_eCE3PIkl9NT5HFPxRrr43WbNKLeAIluMV-Lut3E/exec';
+
+function apiGet_(params) {
+  return fetch(REVIEW_API_URL + '?' + params)
+    .then(function (res) {
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    })
+    .then(function (result) {
+      if (!result || !result.ok) {
+        throw new Error((result && result.error) || 'request failed');
+      }
+      return result;
+    });
+}
+
+function base64ToBlobUrl_(base64, mimeType) {
+  var binary = atob(base64);
+  var bytes = new Uint8Array(binary.length);
+  for (var i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return URL.createObjectURL(new Blob([bytes], { type: mimeType || 'video/mp4' }));
+}
+
+function showLoadStatus_(chipEl, text) {
+  if (chipEl) chipEl.innerHTML = '<div class="file-chip">' + text + '</div>';
+}
+
+function autoLoadSubmission_(id) {
+  var dtlUrl = null;
+
+  showLoadStatus_(chipDTL, 'Loading…');
+  showLoadStatus_(chipFO, 'Waiting…');
+
+  apiGet_('id=' + encodeURIComponent(id) + '&part=meta')
+    .then(function (meta) {
+      if (meta.name) document.getElementById('stName').value = meta.name;
+      if (meta.email) document.getElementById('stEmail').value = meta.email;
+      if (meta.phone) document.getElementById('stPhone').value = meta.phone;
+      return apiGet_('id=' + encodeURIComponent(id) + '&part=video&slot=DTL');
+    })
+    .then(function (dtl) {
+      dtlUrl = base64ToBlobUrl_(dtl.base64, dtl.mimeType);
+      showLoadStatus_(chipDTL, '✓ ' + dtl.fileName);
+      showLoadStatus_(chipFO, 'Loading…');
+      return apiGet_('id=' + encodeURIComponent(id) + '&part=video&slot=FO');
+    })
+    .then(function (fo) {
+      var foUrl = base64ToBlobUrl_(fo.base64, fo.mimeType);
+      showLoadStatus_(chipFO, '✓ ' + fo.fileName);
+      beginReview(dtlUrl, foUrl);
+    })
+    .catch(function (err) {
+      showLoadStatus_(chipDTL, '');
+      showLoadStatus_(chipFO, '');
+      loadError.textContent = "Couldn't load that submission (" + err.message +
+        '). You can still choose the files manually below.';
+      loadError.classList.add('show');
+    });
+}
+
+(function () {
+  var id = new URLSearchParams(window.location.search).get('id');
+  if (id) autoLoadSubmission_(id);
+})();
