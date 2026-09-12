@@ -695,8 +695,23 @@ function resetComparePlayer() {
 
 var REVIEW_API_URL = 'https://script.google.com/macros/s/AKfycbzXeuGQuR0KPa4cU7oDmA9vOwnL_eCE3PIkl9NT5HFPxRrr43WbNKLeAIluMV-Lut3E/exec';
 
-function apiGet_(params) {
-  return fetch(REVIEW_API_URL + '?' + params)
+/**
+ * Every call gets a unique `_t` value and `cache: 'no-store'`.
+ *
+ * Without this, Chrome kept replaying a cached 404 against this URL: a
+ * single transient failure would stick to the page, and the only way
+ * out was a hard refresh. A pro clicking a link in their email has no
+ * reason to know that trick, so the request is made uncacheable
+ * instead.
+ *
+ * One automatic retry on top, for the same reason the upload side needs
+ * one: Apps Script occasionally drops a request with no useful answer,
+ * and a second attempt a moment later normally succeeds.
+ */
+function apiGet_(params, isRetry) {
+  var url = REVIEW_API_URL + '?' + params + '&_t=' + Date.now();
+
+  return fetch(url, { cache: 'no-store' })
     .then(function (res) {
       if (!res.ok) throw new Error('HTTP ' + res.status);
       return res.json();
@@ -706,6 +721,12 @@ function apiGet_(params) {
         throw new Error((result && result.error) || 'request failed');
       }
       return result;
+    })
+    .catch(function (err) {
+      // 'not authorised' means the key is wrong -- retrying won't help.
+      if (isRetry || /not authorised/i.test(err.message)) throw err;
+      return new Promise(function (resolve) { setTimeout(resolve, 1200); })
+        .then(function () { return apiGet_(params, true); });
     });
 }
 
